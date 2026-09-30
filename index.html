@@ -1,0 +1,790 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GHN AI Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: sidebar 3 mục + một luồng tuyến tính 4 bước (Nộp file → Agent xử lý → Duyệt nháp → Hoàn tất) */
+:root{
+  --bg:#ffffff; --panel:#f7f8fa; --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --line2:#eef0f3;
+  --orange:#FF5200; --orange-bg:#fff1ea; --blue:#185FA5; --blue-bg:#eaf2fb;
+  --green:#15803d; --green-bg:#e9f7ee; --amber:#b45309; --amber-bg:#fff6e5; --red:#b91c1c; --red-bg:#fdecec;
+  --ink:#1f2937; --ink-fg:#f9fafb;
+  --sans:"Be Vietnam Pro","Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1115; --panel:#151821; --fg:#e5e7eb; --muted:#9ca3af; --line:#262b36; --line2:#1c2029;
+  --orange:#ff6a26; --orange-bg:#3a1d0e; --blue:#6aa7e8; --blue-bg:#13263a;
+  --green:#4ade80; --green-bg:#10281a; --amber:#fbbf24; --amber-bg:#2e230c; --red:#f87171; --red-bg:#351616;
+  --ink:#e5e7eb; --ink-fg:#111827; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --panel:#151821; --fg:#e5e7eb; --muted:#9ca3af; --line:#262b36; --line2:#1c2029;
+  --orange:#ff6a26; --orange-bg:#3a1d0e; --blue:#6aa7e8; --blue-bg:#13263a;
+  --green:#4ade80; --green-bg:#10281a; --amber:#fbbf24; --amber-bg:#2e230c; --red:#f87171; --red-bg:#351616;
+  --ink:#e5e7eb; --ink-fg:#111827; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.5;margin:0}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.mono{font-family:var(--mono);font-size:12.5px}
+.muted{color:var(--muted)}
+.app{display:grid;grid-template-rows:auto 1fr;height:100%}
+.top{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.logo{width:24px;height:24px;border-radius:6px;background:var(--orange);display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px;flex:none}
+.brand{display:flex;flex-direction:column;line-height:1.15}
+.brand b{font-size:15px}.brand span{font-size:11px;color:var(--muted)}
+.spacer{flex:1}
+.chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;font-size:12px;white-space:nowrap;background:var(--panel);border:1px solid var(--line)}
+.chip.ok{background:var(--green-bg);color:var(--green);border-color:transparent}
+.chip.warn{background:var(--amber-bg);color:var(--amber);border-color:transparent}
+.chip.bad{background:var(--red-bg);color:var(--red);border-color:transparent}
+.chip.info{background:var(--blue-bg);color:var(--blue);border-color:transparent}
+.btn{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:8px 14px;font-weight:500}
+.btn:hover{background:var(--panel)}
+.btn.p{background:var(--orange);border-color:var(--orange);color:#fff}
+.btn.p:hover{filter:brightness(.95)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:13px}
+.btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.main{display:grid;grid-template-columns:230px minmax(0,1fr);min-height:0}
+.side{border-right:1px solid var(--line);background:var(--panel);padding:12px 10px;display:flex;flex-direction:column;gap:3px}
+.sbtn{border:0;background:none;border-radius:8px;padding:9px 12px;text-align:left;color:var(--muted);font-weight:500;display:flex;justify-content:space-between;gap:8px}
+.sbtn:hover{color:var(--fg);background:var(--bg)}
+.sbtn.on{background:var(--bg);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
+.sbtn em{font-style:normal;font-family:var(--mono);font-size:11.5px}
+.side-note{margin-top:auto;font-size:12px;color:var(--muted);padding:10px;border-top:1px solid var(--line)}
+.content{overflow:auto;min-width:0}
+.wrap{max-width:980px;margin:0 auto;padding:24px 24px 80px;display:flex;flex-direction:column;gap:18px}
+h1{font-size:22px;margin:0;text-wrap:balance}
+h2{font-size:15px;margin:0}
+.lead{color:var(--muted);margin:0;max-width:70ch}
+.card{border:1px solid var(--line);border-radius:10px;padding:16px 18px;background:var(--bg);display:flex;flex-direction:column;gap:12px}
+.stepper{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.stepper.s5{grid-template-columns:repeat(5,minmax(0,1fr))}.stepper.s5 div{cursor:pointer}
+.stepper div{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);padding-top:8px;border-top:3px solid var(--line)}
+.stepper div.on{color:var(--fg);font-weight:600;border-top-color:var(--orange)}
+.stepper div.done{color:var(--fg);border-top-color:var(--green)}
+.stepper span{font-family:var(--mono);font-size:12px}
+.row{display:grid;grid-template-columns:160px minmax(0,1fr);gap:12px;align-items:center}
+select{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--fg);font:inherit;width:100%}
+.file{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.file .ic{width:32px;height:32px;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex:none}
+.file .ic.x{background:#1d7a46}.file .ic.p{background:#c0392b}
+.file b{display:block;font-family:var(--mono);font-size:12.5px;word-break:break-all}
+.drop{border:1.5px dashed var(--line);border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer;display:block}
+.drop:hover{border-color:var(--muted)}
+.steps{display:flex;flex-direction:column;gap:2px}
+.st{display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid var(--line2)}
+.st:last-child{border-bottom:0}
+.st .ic{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;background:var(--panel);color:var(--muted);border:1px solid var(--line)}
+.st.done .ic{background:var(--green-bg);color:var(--green);border-color:transparent}
+.st.run .ic{background:var(--blue-bg);color:var(--blue);border-color:transparent;animation:pulse 1s infinite}
+.st.wait{opacity:.45}
+.st b{font-weight:600}
+.st .res{font-size:13px;color:var(--muted)}
+@keyframes pulse{50%{opacity:.4}}
+.sys{border:2px solid var(--blue);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.sys .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{background:var(--panel);text-align:left;font-weight:600;color:var(--muted);font-size:12px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line2);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+tr.bad td{background:var(--red-bg)}
+tr.warn td{background:var(--amber-bg)}
+tr.del td{opacity:.45;text-decoration:line-through}
+tr.chg td{background:var(--blue-bg)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.stat b{display:block;font-size:24px;font-family:var(--mono);font-weight:600}
+.stat span{font-size:12.5px;color:var(--muted)}
+.q{border:1.5px solid var(--amber);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.q.done{border-color:var(--line);background:var(--panel)}
+.q .h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:600}
+.trace{font-size:13px;color:var(--green);font-weight:500}
+.kv{display:grid;grid-template-columns:170px minmax(0,1fr);gap:8px 14px;margin:0}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.confirm{border:1.5px solid var(--orange);background:var(--orange-bg);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.hero{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.big-ok{width:44px;height:44px;border-radius:50%;background:var(--green-bg);color:var(--green);display:grid;place-items:center;font-size:22px;font-weight:700;flex:none}
+.note{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:flex-start}
+.chat{display:flex;flex-direction:column;gap:12px}
+.msg{max-width:88%;border-radius:12px;padding:10px 14px}
+.msg.u{align-self:flex-end;background:var(--blue-bg)}
+.msg.a{align-self:flex-start;border:1px solid var(--line);background:var(--bg);display:flex;flex-direction:column;gap:10px;max-width:100%;width:100%}
+.who{font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+.composer{display:flex;gap:8px;border:1px solid var(--line);border-radius:10px;padding:8px}
+.composer input{flex:1;border:0;background:none;color:var(--fg);font:inherit;padding:4px 6px;min-width:0}
+.composer input:focus{outline:none}
+.sugg{display:flex;gap:6px;flex-wrap:wrap}
+.sugg button{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px;font-size:13px}
+.newp{color:var(--green);font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(10,12,16,.45);display:grid;place-items:center;padding:16px;z-index:30}
+.dlg{background:var(--bg);border:1px solid var(--line);border-radius:12px;max-width:820px;width:100%;max-height:88vh;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+#toast{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:40}
+.toastbox{background:var(--ink);color:var(--ink-fg);border-radius:8px;padding:10px 14px;font-size:13px;max-width:360px}
+.link{color:var(--blue);background:none;border:0;padding:0;cursor:pointer;font:inherit}
+.link:hover{text-decoration:underline}
+.crumb{font-size:13px;color:var(--muted)}
+.wfgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.wfcard{border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;min-height:170px}
+.rc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:2px 8px 2px 2px;font-family:var(--mono);font-size:11.5px;background:var(--bg);cursor:pointer;color:var(--fg)}
+.rc i{font-style:normal;font-family:var(--sans);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px}
+.rc.w{border-color:var(--red)}
+.t-skill i{background:var(--orange-bg);color:var(--orange)}
+.t-tool i{background:var(--blue-bg);color:var(--blue)}
+.t-know i{background:var(--green-bg);color:var(--green)}
+.t-pol i{background:var(--red-bg);color:var(--red)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{border:0;background:none;padding:8px 10px;border-bottom:2px solid transparent;display:flex;gap:6px;align-items:center;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.tabs button.on{border-bottom-color:var(--fg);color:var(--fg)}
+.tabs .rc{border:0;padding:0}
+tr.click{cursor:pointer}tr.click:hover td{background:var(--panel)}
+@media (max-width:860px){.wfgrid{grid-template-columns:1fr}}
+.wsbox{position:relative;margin-bottom:8px}
+.wsbtn{width:100%;display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:8px 10px;text-align:left}
+.wsbtn b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wsbtn small{color:var(--muted);font-size:11.5px}
+.wsbtn>span:nth-child(2){flex:1}
+.wsav{width:26px;height:26px;border-radius:7px;background:var(--orange);color:#fff;display:inline-grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.wsmenu{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px;z-index:10;display:flex;flex-direction:column;gap:2px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.wsmenu button{border:0;background:none;text-align:left;border-radius:6px;padding:6px 8px;display:flex;gap:8px;align-items:center;font-size:13px}
+.wsmenu button:hover,.wsmenu button.on{background:var(--panel)}
+.sgroup{margin:14px 12px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--orange);font-weight:700}
+.tabs2{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs2 button{border:0;background:none;padding:8px 12px;border-bottom:2px solid transparent;color:var(--muted);font-weight:500}
+.tabs2 button.on{color:var(--fg);border-bottom-color:var(--fg)}
+.io{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.io div{background:var(--panel);border-radius:8px;padding:8px 10px;font-size:12.5px}
+.io i,.pcol i{display:block;font-style:normal;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:2px}
+.pipe{display:grid;grid-template-columns:minmax(0,1fr) 28px minmax(0,1.3fr) 28px minmax(0,1fr);align-items:stretch}
+.pcol{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.pcol.proc{border:2px solid var(--fg)}
+.parr{display:grid;place-items:center;color:var(--muted);font-size:18px}
+.pstep{display:flex;gap:8px;align-items:center;font-size:13px}
+.pstep span{width:20px;height:20px;border-radius:50%;background:var(--panel);border:1px solid var(--line);display:grid;place-items:center;font-family:var(--mono);font-size:11px;flex:none}
+.chk{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line2);border-radius:8px;font-size:13px;flex-wrap:wrap}
+.chk>span:first-child{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;background:var(--green-bg);color:var(--green)}
+.chk.bad>span:first-child{background:var(--red-bg);color:var(--red)}
+.chk.bad{border-color:var(--red)}
+.bot{display:flex;gap:10px;align-items:flex-start;background:var(--blue-bg);border-radius:10px;padding:10px 14px;font-size:13.5px}
+.inp{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--fg);font:inherit;width:100%}
+textarea.inp{font-family:var(--mono);font-size:12.5px}
+.pick{display:inline-flex;gap:4px;align-items:center}
+.tog{width:36px;height:20px;border-radius:999px;border:0;background:var(--line);position:relative;padding:0}
+.tog span{position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.tog.on{background:var(--green)}.tog.on span{left:18px}
+.tog:disabled{opacity:.6;cursor:not-allowed}
+@media (max-width:860px){.pipe{grid-template-columns:1fr}.parr{transform:rotate(90deg)}.io{grid-template-columns:1fr}.stepper.s5 div{font-size:10.5px}}
+.sbtn.new{border:1px solid var(--line);background:var(--bg);color:var(--fg);font-weight:600;margin-bottom:6px}
+.chatpage{display:grid;grid-template-columns:minmax(340px,430px) minmax(0,1fr);height:100%;min-height:0}
+.ccol{display:flex;flex-direction:column;min-height:0;border-right:1px solid var(--line)}
+.cscroll{flex:1;overflow:auto;padding:18px 16px;display:flex;flex-direction:column;gap:14px}
+.ccomp{padding:10px 14px 14px;border-top:1px solid var(--line)}
+.cm{display:flex;gap:10px;align-items:flex-start}
+.cm.u{justify-content:flex-end}
+.cm.u .cb{background:var(--blue-bg);border-radius:12px;padding:9px 12px;max-width:90%;display:flex;flex-direction:column;gap:6px}
+.cm.a .cb{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.av{width:26px;height:26px;border-radius:7px;background:var(--orange);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;flex:none}
+.fch{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:11.5px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px}
+.fi{width:26px;height:20px;border-radius:4px;color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;font-family:var(--sans)}
+.fi.x{background:#1d7a46}.fi.p{background:#c0392b}
+.sugg2{display:flex;flex-direction:column;gap:6px;margin-left:36px}
+.sugg2 button{text-align:left;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px}
+.sugg2 button:hover{border-color:var(--orange)}
+.sugg2 span{font-size:12px;color:var(--muted)}
+.cscroll .steps .st{padding:6px 0}
+.cscroll .q{padding:10px 12px}
+.ocol{background:var(--panel);display:flex;flex-direction:column;min-height:0;min-width:0}
+.otabs{display:flex;gap:4px;padding:10px 14px 0;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.otabs button{border:1px solid transparent;border-bottom:0;background:none;border-radius:8px 8px 0 0;padding:7px 12px;font-size:13px;color:var(--muted);white-space:nowrap}
+.otabs button.on{background:var(--bg);border-color:var(--line);color:var(--fg);font-weight:600;margin-bottom:-1px}
+.obody{flex:1;overflow:auto;background:var(--bg);padding:20px 22px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.oempty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:24px}
+.oico{width:48px;height:48px;border-radius:12px;border:1.5px dashed var(--line);display:grid;place-items:center;color:var(--muted);font-size:20px}
+@media (max-width:860px){.chatpage{grid-template-columns:1fr;height:auto}.ccol{border-right:0;border-bottom:1px solid var(--line)}.cscroll{max-height:none}.ocol{min-height:420px}}
+.sdiv{height:1px;background:var(--line);margin:10px 12px}
+.composer2{border:1px solid var(--line);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+.composer2 input#ask{border:0;background:none;color:var(--fg);font:inherit;padding:4px 2px;min-width:0}
+.composer2 input#ask:focus{outline:none}
+.composer2:focus-within{border-color:var(--muted)}
+.ctools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.tbtn{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 11px;font-size:12.5px;cursor:pointer;color:var(--fg)}
+.tbtn:hover,.tbtn.on{border-color:var(--fg)}
+.selchip{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;border-radius:8px;padding:3px 6px 3px 3px;font-size:12.5px;border:1px solid var(--line);background:var(--bg)}
+.selchip i{font-style:normal;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px}
+.selchip.wf i{background:var(--blue-bg);color:var(--blue)}.selchip.sk i{background:var(--orange-bg);color:var(--orange)}
+.selchip button{border:0;background:none;color:var(--muted);padding:0 2px}
+.ccomp{position:relative}
+.pop{position:absolute;left:14px;right:14px;bottom:calc(100% - 4px);background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:6px;max-height:340px;overflow:auto;z-index:15;display:flex;flex-direction:column;gap:2px}
+.poph{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;padding:6px 8px}
+.pop button{border:0;background:none;text-align:left;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.pop button:hover{background:var(--panel)}
+.pop button span{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#gate{min-height:100%;background:var(--panel)}
+.gwrap{min-height:100vh;display:grid;place-items:center;padding:24px 16px}
+.gcard{width:100%;max-width:420px;background:var(--bg);border:1px solid var(--line);border-radius:16px;padding:28px 28px 24px;display:flex;flex-direction:column;gap:14px}
+.gcard.wide{max-width:600px}
+.glogo{display:flex;gap:12px;align-items:center}
+.sso{display:flex;gap:10px;align-items:center;justify-content:center;padding:11px 14px;font-weight:600}
+.gsq{width:20px;height:20px;border-radius:5px;background:var(--orange);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.gor{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+.gor::before,.gor::after{content:"";flex:1;height:1px;background:var(--line)}
+.demo-acc{display:flex;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.demo-acc>div{flex:1;min-width:0}
+.eyebrow2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--orange);font-weight:700}
+.wsrow{display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.wsrow.on{border-color:var(--green);background:var(--green-bg)}
+.wsrow.mine{background:var(--panel)}
+.wsrow .wsav{width:34px;height:34px;font-size:15px;border-radius:9px}
+@media (max-width:860px){
+  .app{height:auto}.main{grid-template-columns:1fr}
+  .side{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .sbtn{white-space:nowrap}.side-note{display:none}
+  .wrap{padding:18px 16px 60px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .row,.kv{grid-template-columns:1fr}
+  .stepper div{font-size:11.5px}
+  .top .hide-sm{display:none}
+}
+
+/* ---------- Friendly theme overrides ---------- */
+:root{--peach:#ffe8dc;--sky:#e3efff;--mint:#dff5ea;--lilac:#efe7ff;--sun:#fff4d6;--grad:linear-gradient(135deg,#ff6a2b 0%,#ff9152 100%)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--peach:#3a2016;--sky:#14243a;--mint:#10281c;--lilac:#231a3a;--sun:#2e2610}}
+:root[data-theme="dark"]{--peach:#3a2016;--sky:#14243a;--mint:#10281c;--lilac:#231a3a;--sun:#2e2610}
+body{background:var(--panel)}
+.top{background:var(--bg);box-shadow:0 1px 0 var(--line)}
+.logo,.av,.wsav{background:var(--grad)}
+.btn{border-radius:10px;transition:transform .12s,box-shadow .12s,background .12s}
+.btn.p{background:var(--grad);border-color:transparent;box-shadow:0 4px 12px color-mix(in srgb,var(--orange) 30%,transparent)}
+.btn.p:hover{transform:translateY(-1px);box-shadow:0 6px 16px color-mix(in srgb,var(--orange) 38%,transparent);filter:none}
+.btn.p:disabled{transform:none;box-shadow:none}
+.chip{border-radius:999px}
+.side{background:var(--bg);gap:4px}
+.sbtn{border-radius:10px;align-items:center;justify-content:flex-start;gap:10px}
+.sbtn>span{flex:1}
+.sbtn::before{content:"";width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:13px;flex:none;background:var(--panel);color:var(--muted)}
+.sbtn[data-page=chat]::before{content:"✦";background:var(--grad);color:#fff}
+.sbtn[data-page=wf]::before{content:"▶";background:var(--sky);color:var(--blue)}
+.sbtn[data-page=skill]::before{content:"✎";background:var(--peach);color:var(--orange)}
+.sbtn[data-page=kb]::before{content:"▤";background:var(--mint);color:var(--green)}
+.sbtn[data-page=mcp]::before{content:"⇄";background:var(--lilac);color:#7c3aed}
+.sbtn[data-page=eval]::before{content:"✓";background:var(--sun);color:var(--amber)}
+.sbtn[data-page=policy]::before{content:"◈";background:var(--red-bg);color:var(--red)}
+.sbtn.on{background:var(--panel);box-shadow:none}
+.sbtn.new{background:var(--peach);border-color:transparent;color:var(--fg)}
+.sbtn em{background:var(--panel);border-radius:999px;padding:0 7px}
+.wsbtn{border-radius:12px;background:linear-gradient(135deg,var(--peach),var(--sky))}
+.card,.tw,.stat,.wfcard,.pcol{border-radius:14px}
+.card,.wfcard{box-shadow:0 1px 2px rgba(16,24,40,.04),0 4px 14px rgba(16,24,40,.04)}
+.wfcard{position:relative;overflow:hidden;padding-top:20px}
+.wfcard::before{content:"";position:absolute;left:0;right:0;top:0;height:5px;background:var(--grad)}
+.wfgrid .wfcard:nth-child(2)::before{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.wfgrid .wfcard:nth-child(3)::before{background:linear-gradient(90deg,#8b5cf6,#c084fc)}
+.wfgrid .wfcard:nth-child(4)::before{background:linear-gradient(90deg,#10b981,#34d399)}
+.wfcard:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(16,24,40,.08);transition:all .15s}
+.io div{border-radius:10px}
+.io div:first-child{background:var(--sky)}.io div:last-child{background:var(--mint)}
+.stats .stat:nth-child(1){background:var(--sky);border-color:transparent}
+.stats .stat:nth-child(2){background:var(--mint);border-color:transparent}
+.stats .stat:nth-child(3){background:var(--sun);border-color:transparent}
+.stats .stat:nth-child(4){background:var(--lilac);border-color:transparent}
+.pcol:first-child{background:var(--sky);border-color:transparent}
+.pcol:last-child{background:var(--mint);border-color:transparent}
+.pcol.proc{border:2px solid var(--orange);background:var(--bg)}
+.parr{color:var(--orange);font-weight:700}
+.cscroll{background:var(--bg)}
+.cm.u .cb{background:linear-gradient(135deg,var(--sky),var(--lilac));border-radius:16px 16px 4px 16px}
+.cm.a .cb{background:var(--panel);border-radius:4px 16px 16px 16px;padding:10px 14px}
+.sugg2 button{border-radius:14px;background:var(--bg);box-shadow:0 1px 3px rgba(16,24,40,.05)}
+.sugg2 button:nth-child(1){border-left:4px solid var(--orange)}
+.sugg2 button:nth-child(2){border-left:4px solid var(--blue)}
+.sugg2 button:nth-child(3){border-left:4px solid #8b5cf6}
+.sugg2 button:hover{transform:translateX(2px);transition:transform .12s}
+.composer2{border-radius:16px;box-shadow:0 2px 10px rgba(16,24,40,.06)}
+.tbtn{border-radius:999px}
+.tbtn[data-pick=skill]{background:var(--peach);border-color:transparent}
+.tbtn[data-pick=wf]{background:var(--sky);border-color:transparent}
+.tbtn[for=upl2]{background:var(--mint);border-color:transparent}
+.tbtn.on{outline:2px solid var(--fg)}
+.pop{border-radius:16px}
+.ocol{background:linear-gradient(180deg,var(--panel),var(--bg))}
+.otabs button{border-radius:999px;border:1px solid var(--line);margin:0 0 8px;background:var(--bg)}
+.otabs button.on{background:var(--grad);color:#fff;border-color:transparent;margin-bottom:8px}
+.otabs{border-bottom:0}
+.obody{border-radius:16px 16px 0 0;margin:0 12px;box-shadow:0 -1px 0 var(--line),0 4px 20px rgba(16,24,40,.05)}
+.oico{border:0;background:linear-gradient(135deg,var(--peach),var(--sky));color:var(--orange);width:64px;height:64px;border-radius:18px;font-size:26px}
+.q{border-radius:14px;background:var(--sun);border-color:transparent}
+.q.done{background:var(--mint)}
+.bot{background:linear-gradient(135deg,var(--sky),var(--lilac));border-radius:14px}
+.chk{border-radius:10px}
+.stepper div.on{border-top-color:var(--orange)}
+.gwrap{background:radial-gradient(circle at 15% 20%,var(--peach) 0,transparent 40%),radial-gradient(circle at 85% 80%,var(--sky) 0,transparent 45%),radial-gradient(circle at 80% 15%,var(--lilac) 0,transparent 35%),var(--panel)}
+.gcard{border-radius:22px;box-shadow:0 20px 60px rgba(16,24,40,.10);border-color:transparent}
+.sso{border-radius:12px}
+.demo-acc{border-radius:14px;background:linear-gradient(135deg,var(--peach),var(--sun));border-color:transparent}
+.wsrow{border-radius:14px;transition:all .15s}
+.wsrow.on{box-shadow:0 4px 14px color-mix(in srgb,var(--green) 20%,transparent)}
+.toastbox{border-radius:12px;background:var(--grad);color:#fff;box-shadow:0 8px 24px color-mix(in srgb,var(--orange) 30%,transparent)}
+th{background:var(--panel)}
+h1{letter-spacing:-.01em}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;transform:none!important}}
+</style>
+<style>[hidden]{display:none!important}</style></head><body>
+
+<div class="app">
+  <header class="top">
+    <div class="logo">G</div>
+    <div class="brand"><b>GHN AI Platform</b><span>AI Experimentation OS</span></div>
+    <span class="chip warn hide-sm">Staging B2B · dữ liệu mô phỏng</span>
+    <div class="spacer"></div>
+    <button class="btn sm" data-act="logout" title="Đăng xuất">Đăng xuất</button>
+    <button class="btn sm" id="rolechip" data-act="role" title="Đổi vai trò để xem màn Super admin">Ngọc · Member</button>
+  </header>
+  <div class="main">
+    <nav class="side" id="side" aria-label="Menu"></nav>
+    <section class="content" id="content"></section>
+  </div>
+</div>
+<div id="gate" hidden></div>
+<div id="modal"></div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const S={page:'home',wf:'cai_gia_ltl',lt:'Skill',step:1,prog:0,a:{},confirm:false,created:false,
+ chat:0,c02:null,uconfirm:false,scheduled:false,files:['Bang_gia_ConCung_2026.xlsx','Hop_dong_ConCung_LTL_2026.pdf']};
+
+const REQS=[
+ ['Đơn vị tính','CBM hoặc KG, một bảng một đơn vị'],
+ ['Cơ chế tối thiểu','Không dùng · MOQ · Min charge; chung cả bảng hoặc theo tuyến'],
+ ['Bậc sản lượng','Liền mạch, không hở, không chồng; mỗi bậc một đơn giá'],
+ ['Địa chỉ','Địa giới cũ (có Quận/Huyện) hoặc mới'],
+ ['File tuyến','Điểm lấy → điểm giao, 4 cấp, tối đa 5.000 dòng'],
+ ['Kiểm tra','2 dòng cùng cấp khớp 1 địa chỉ là lỗi chặn'],
+ ['Vòng đời','Draft → Scheduled → Active; sửa = tạo bản nháp mới']
+];
+const STEPS=[
+ ['Đọc bảng giá của khách','Tab "Bảng giá LTL", tiêu đề ở dòng 4, 130 tuyến',[['Tool','pricing_tools.read_price_file'],['Knowledge','profile_ConCung']]],
+ ['Đọc hợp đồng','Đơn vị CBM (điều 4.1) · tối thiểu 0,5 CBM (điều 4.3) · hiệu lực 01/10/2026 (điều 9)',[['Skill','doc_hop_dong_van_chuyen']]],
+ ['Hỏi hệ thống B2B: cài giá LTL cần những gì?','Hệ thống trả về 7 yêu cầu. Nháp sẽ sinh đúng theo khung này',[['Tool','b2b_pricing.get_pricing_requirements']]],
+ ['Nhận diện cấu trúc bảng giá','1 bậc, đơn giá theo CBM, MOQ theo tuyến · độ tin cậy 0,96',[['Knowledge','archetype_ltl']]],
+ ['Chuẩn hóa tuyến theo master data','129/130 tuyến khớp',[['Tool','master_data.lookup_lane'],['Knowledge','master_data_lanes']]],
+ ['Kiểm tra theo rule cài giá','127 hợp lệ · 2 cần bạn quyết · 1 giữ lại',[['Knowledge','ruleset_cai_gia'],['Policy','chung']]]
+];
+const TC={Skill:'t-skill',Tool:'t-tool',Knowledge:'t-know',Policy:'t-pol'};
+const TLB={Skill:'Skill',Tool:'MCP',Knowledge:'KB',Policy:'Policy'};
+function rc(r){const nm=r[1].split('.')[0];const w=nm==='b2b_pricing'&&(r[1].includes('create')||r[1].includes('schedule')||r[1]==='b2b_pricing');return `<button class="rc ${TC[r[0]]} ${w?'w':''}" data-res="${nm}"><i>${TLB[r[0]]}</i>${r[1]}</button>`}
+const LANES=[
+ ['Hưng Yên','Q.1, TP.HCM','Quận/Huyện','0,5','285.000',''],
+ ['Hưng Yên','Q.3, TP.HCM','Quận/Huyện','0,5','285.000',''],
+ ['Hưng Yên','TP. Thủ Đức','Quận/Huyện','1','265.000','P03'],
+ ['Hưng Yên','Q.9, TP.HCM (cũ)','Quận/Huyện','1','265.000','P03'],
+ ['Hưng Yên','Đà Nẵng','Tỉnh/TP','0,5','190.000',''],
+ ['Hưng Yên','Huế','Tỉnh/TP','0,5','190.000',''],
+ ['Hưng Yên','Cần Thơ','Tỉnh/TP','0,5','310.000',''],
+ ['Hưng Yên','Bà Rịa - Vũng Tàu','Tỉnh/TP','0,5','295.000','M01'],
+ ['Hưng Yên','Hà Nội (nội thành)','Vùng','1','95.000','']
+];
+function toast(m){$('#toast').innerHTML=`<div class="toastbox">✓ ${m}</div>`;clearTimeout(toast.t);toast.t=setTimeout(()=>$('#toast').innerHTML='',2600)}
+
+function stepper(){const L=['Nộp file','Agent xử lý','Duyệt nháp','Hoàn tất'];return `<div class="stepper">${L.map((l,i)=>`<div class="${S.step===i+1?'on':S.step>i+1?'done':''}"><span>${S.step>i+1?'✓':i+1}</span>${l}</div>`).join('')}</div>`}
+function reqTable(){return `<div class="tw"><table><tbody>${REQS.map(r=>`<tr><td style="width:170px"><b>${r[0]}</b></td><td>${r[1]}</td></tr>`).join('')}</tbody></table></div>`}
+
+/* ---------- Bước 1 ---------- */
+function s1(){return `<div><h1>Cài bảng giá LTL cho khách mới</h1><p class="lead">Nộp bảng giá và hợp đồng của khách. Agent đọc, hỏi hệ thống B2B cần gì, rồi tạo bản nháp để bạn duyệt. Làm tay mất khoảng 1,5 ngày.</p></div>
+ <div class="card">
+  <div class="row"><label for="cus">Khách hàng</label><select id="cus"><option>Con Cưng · mã KH 42495 · chưa có bảng giá LTL</option></select></div>
+  <div class="row"><label for="svc">Dịch vụ</label><select id="svc"><option>LTL (hàng lẻ)</option></select></div>
+  <div class="row" style="align-items:start"><span>File của khách</span><div style="display:flex;flex-direction:column;gap:8px">
+   ${S.files.map(f=>`<div class="file"><span class="ic ${f.endsWith('.pdf')?'p':'x'}">${f.endsWith('.pdf')?'PDF':'XLS'}</span><div style="min-width:0"><b>${f}</b><span class="muted" style="font-size:12px">${f.startsWith('Bang_gia_ConCung')?'Bảng giá · 2 tab · 130 dòng':f.startsWith('Hop_dong')?'Hợp đồng · 14 trang':'Tải lên'}</span></div></div>`).join('')}
+   <label class="drop" for="upl">+ Thêm file (Excel, PDF)</label><input type="file" id="upl" hidden></div></div>
+ </div>
+ <div class="btns"><button class="btn p" data-act="start">Bắt đầu</button><span class="muted" style="font-size:13px">File mẫu đã được che thông tin khách</span></div>`}
+
+/* ---------- Bước 2 ---------- */
+function s2(){
+ const done=S.prog>=STEPS.length;
+ return `<div><h1>Agent đang xử lý</h1><p class="lead">Con Cưng · 42495 · LTL · 2 file</p></div>
+ <div class="card"><div class="steps">${STEPS.map((s,i)=>{const st=i<S.prog?'done':i===S.prog?'run':'wait';
+  return `<div class="st ${st}"><span class="ic">${st==='done'?'✓':i+1}</span><div style="display:flex;flex-direction:column;gap:4px"><b>${s[0]}</b>${st==='done'?`<div class="res">${s[1]}</div>`:st==='run'?'<div class="res">đang làm…</div>':''}<div class="btns" style="gap:5px">${s[2].map(rc).join('')}</div></div></div>`}).join('')}</div></div>
+ ${S.prog>=3?`<div class="sys"><div class="h"><span class="chip info">Hệ thống B2B trả lời</span><b>Yêu cầu để cài bảng giá LTL</b></div>${reqTable()}<div class="note">Agent hỏi thẳng hệ thống thay vì đoán. Hệ thống đổi yêu cầu thì agent đọc lại, không phải sửa prompt.</div></div>`:''}
+ <div class="btns"><button class="btn p" data-act="toReview" ${done?'':'disabled'}>Xem bản nháp</button></div>`;
+}
+function tick(){if(S.page!=='run'||S.step!==2)return;if(S.prog<STEPS.length){S.prog++;render();setTimeout(tick,S.prog===3?1100:650)}}
+
+/* ---------- Bước 3 ---------- */
+function laneRows(){return LANES.map((l,i)=>{let cls='',chk='<span class="chip ok">hợp lệ</span>';
+ if(l[5]==='P03'){if(S.a.p03==='drop'&&i===3){cls='del';chk='<span class="chip">đã bỏ</span>'}else if(S.a.p03){chk='<span class="chip ok">đã xử lý</span>'}else{cls='bad';chk='<span class="chip bad">trùng địa chỉ</span>'}}
+ if(l[5]==='M01'){cls='warn';chk='<span class="chip warn">chưa có trong master data</span>'}
+ return `<tr class="${cls}"><td class="num">${i+1}</td><td>${l[0]}</td><td>${l[1]}</td><td class="r num">${l[3]}</td><td class="r num">${l[4]}</td><td>${chk}</td></tr>`}).join('')+`<tr><td colspan="6" class="muted">… 121 tuyến khác, tất cả hợp lệ</td></tr>`}
+function s3(){
+ const ok=S.a.c01&&S.a.p03;const n=S.a.p03==='drop'?129:130;
+ return `<div><h1>Duyệt bản nháp bảng giá</h1><p class="lead">Nháp sinh đúng 7 yêu cầu của hệ thống B2B. Còn 2 chỗ agent không tự quyết.</p></div>
+ <div class="stats"><div class="stat"><b>130</b><span>tuyến đọc được</span></div><div class="stat"><b style="color:var(--green)">127</b><span>hợp lệ</span></div><div class="stat"><b style="color:${ok?'var(--green)':'var(--amber)'}">${ok?0:2-(S.a.c01?1:0)-(S.a.p03?1:0)}</b><span>cần bạn quyết</span></div><div class="stat"><b style="color:var(--amber)">1</b><span>giữ lại, chờ Ops</span></div></div>
+ <div class="q ${S.a.c01?'done':''}"><div class="h"><span class="chip warn">1</span>Hợp đồng và file khác nhau về mức tối thiểu</div>
+  <div>Hợp đồng ghi tối thiểu <b>0,5 CBM chung</b>. File ghi MOQ theo từng tuyến, có 3 tuyến là <b>1 CBM</b> (Thủ Đức, Q.9 cũ, Hà Nội nội thành). Theo bên nào?</div>
+  ${S.a.c01?`<div class="trace">✓ Bạn chọn: ${S.a.c01==='file'?'theo file, MOQ theo tuyến':'theo hợp đồng, 0,5 CBM chung'} · 09:44</div>`:'<div class="btns"><button class="btn p sm" data-ans="c01:file">Theo file, MOQ theo tuyến</button><button class="btn sm" data-ans="c01:hd">Theo hợp đồng, 0,5 CBM chung</button></div>'}</div>
+ <div class="q ${S.a.p03?'done':''}"><div class="h"><span class="chip warn">2</span>Hai tuyến trùng một địa chỉ</div>
+  <div><b>TP. Thủ Đức</b> và <b>Q.9 (cũ)</b> cùng khớp địa chỉ Q.9 cũ. Hệ thống B2B sẽ chặn khi import.</div>
+  ${S.a.p03?`<div class="trace">✓ Bạn chọn: ${S.a.p03==='drop'?'bỏ dòng Q.9 cũ, giữ Thủ Đức':'giữ cả 2, hỏi lại khách'} · 09:44</div>`:'<div class="btns"><button class="btn p sm" data-ans="p03:drop">Bỏ Q.9 cũ, giữ Thủ Đức</button><button class="btn sm" data-ans="p03:keep">Giữ cả 2, hỏi lại khách</button></div>'}</div>
+ <div class="card"><h2>Cấu hình bảng giá</h2><dl class="kv">
+  <dt>Đơn vị</dt><dd>CBM <span class="muted">· hợp đồng điều 4.1</span></dd>
+  <dt>Tối thiểu</dt><dd>${S.a.c01==='hd'?'0,5 CBM chung cả bảng':'MOQ theo tuyến'} ${S.a.c01?'':'<span class="chip warn">chờ bạn quyết</span>'}</dd>
+  <dt>Bậc</dt><dd>1 bậc, đơn giá theo CBM</dd>
+  <dt>Địa chỉ</dt><dd>Địa giới cũ</dd>
+  <dt>Hiệu lực</dt><dd>01/10/2026 <span class="muted">· hợp đồng điều 9</span></dd></dl>
+ <div class="tw"><table><thead><tr><th>#</th><th>Điểm lấy</th><th>Điểm giao</th><th class="r">MOQ (CBM)</th><th class="r">Đơn giá / CBM</th><th>Kiểm tra</th></tr></thead><tbody>${laneRows()}</tbody></table></div>
+ <div class="note">Bà Rịa - Vũng Tàu chưa có trong master data (tỉnh đã sáp nhập). Agent giữ dòng lại, không cài, và đã báo Ops bổ sung.</div></div>
+ ${S.confirm?`<div class="confirm"><b>Tạo bảng giá DRAFT cho Con Cưng trên hệ thống B2B?</b><div>${n-1} tuyến · hiệu lực 01/10/2026. Bảng giá ở trạng thái nháp, agent không active được. BD active trên Portal khi sẵn sàng.</div><div class="btns"><button class="btn p" data-act="create">Tạo DRAFT</button><button class="btn" data-act="unconfirm">Quay lại</button></div></div>`:
+ `<div class="btns"><button class="btn p" data-act="confirm" ${ok?'':'disabled'}>Duyệt và tạo DRAFT trên B2B</button>${ok?'':'<span class="muted" style="font-size:13px">Trả lời 2 câu ở trên để duyệt</span>'}</div>`}`;
+}
+
+/* ---------- Bước 4 ---------- */
+function s4(){const n=S.a.p03==='drop'?128:129;
+ return `<div class="hero"><span class="big-ok">✓</span><div><h1>Đã tạo bảng giá nháp trên hệ thống B2B</h1><p class="lead">Con Cưng · 42495 · LTL</p></div></div>
+ <div class="stats"><div class="stat"><b>11′</b><span>từ nộp file đến DRAFT (làm tay 1,5 ngày)</span></div><div class="stat"><b>${n}</b><span>tuyến đã cài</span></div><div class="stat"><b>2</b><span>câu hỏi cho người</span></div><div class="stat"><b>0</b><span>lỗi chặn khi import</span></div></div>
+ <div class="card"><dl class="kv"><dt>Mã bảng giá</dt><dd class="mono"><b>LTL-42495-2026-10</b></dd><dt>Trạng thái</dt><dd><span class="chip">DRAFT</span> chờ BD active trên Portal</dd><dt>Hiệu lực</dt><dd>01/10/2026</dd><dt>Người duyệt</dt><dd>Ngọc · mã duyệt APR-2f91 · 09:47</dd></dl></div>
+ <div class="card"><h2>Báo cáo cho CS</h2><dl class="kv"><dt>Thành phần</dt><dd>Cước giao LTL theo CBM, MOQ theo tuyến</dd><dt>Công thức</dt><dd class="mono">cước = max(sản lượng thực, MOQ tuyến) × đơn giá tuyến</dd><dt>Lưu ý</dt><dd>Bà Rịa - Vũng Tàu chờ Ops bổ sung master data. Hà Nội nội thành 95.000 đ/CBM đã đối chiếu phụ lục 2 hợp đồng.</dd></dl></div>
+ <div class="card" style="flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap"><div><b>Khách đổi giá về sau?</b><div class="muted" style="font-size:13px">Không cần làm lại từ đầu. Nhắn một câu cho agent.</div></div><button class="btn p" data-runwf="cap_nhat_gia">Chạy workflow "Cập nhật bảng giá bằng chat"</button></div>`}
+
+/* ---------- Cập nhật bằng chat ---------- */
+const UMSG='Con Cưng tăng 5% các tuyến đi miền Trung từ 1/11, làm tròn lên nghìn';
+function upd(){
+ let h=`<div><h1>Cập nhật giá bằng chat</h1><p class="lead">Nhắn thay đổi cho agent. Agent đọc bảng giá đang active, tạo bản nháp mới, bạn duyệt rồi agent đặt lịch hiệu lực.</p></div>
+ <div class="card" style="gap:6px"><div class="muted" style="font-size:12.5px">Bảng giá đang active</div><div><b class="mono">LTL-42495-2026-10</b> · Con Cưng · 129 tuyến · hiệu lực 01/10/2026</div></div>
+ <div class="chat">`;
+ if(S.chat>=1){
+  h+=`<div class="msg u"><div class="who">Ngọc</div>${UMSG}</div>`;
+  h+=`<div class="msg a"><div class="who">agent</div><div>Đã đọc bảng active. Theo vùng GHN, miền Trung có <b>15 tuyến</b>. Tăng 5% và làm tròn lên nghìn thì <b>14 tuyến</b> đổi giá. Bảng hiện tại giữ nguyên tới 31/10.</div>
+  <div class="tw"><table><thead><tr><th>Điểm giao</th><th class="r">Giá hiện tại</th><th class="r">Giá mới từ 01/11</th></tr></thead><tbody>
+  <tr class="chg"><td>Đà Nẵng</td><td class="r num">190.000</td><td class="r num newp">200.000</td></tr>
+  <tr class="chg"><td>Huế</td><td class="r num">190.000</td><td class="r num newp">200.000</td></tr>
+  <tr class="chg"><td>Quảng Nam</td><td class="r num">205.000</td><td class="r num newp">216.000</td></tr>
+  <tr class="chg"><td>Quảng Ngãi</td><td class="r num">215.000</td><td class="r num newp">226.000</td></tr>
+  <tr class="${S.c02==='yes'?'chg':S.c02?'':'warn'}"><td>Nghệ An</td><td class="r num">160.000</td><td class="r num ${S.c02==='yes'?'newp':''}">${S.c02==='yes'?'168.000':S.c02==='no'?'160.000 (giữ)':'?'}</td></tr>
+  <tr><td colspan="3" class="muted">… 10 tuyến miền Trung khác +5%</td></tr></tbody></table></div>
+  ${S.c02?`<div class="trace">✓ Bạn chọn: ${S.c02==='no'?'không tính Nghệ An, miền Trung từ Đà Nẵng trở vào':'tính Nghệ An theo vùng GHN'}. Agent ghi lại định nghĩa này cho Con Cưng.</div>`:`<div class="q"><div class="h"><span class="chip warn">?</span>Con Cưng chưa định nghĩa "miền Trung"</div><div>Theo vùng GHN thì Nghệ An thuộc miền Trung. Có tính Nghệ An không?</div><div class="btns"><button class="btn p sm" data-c02="no">Không, từ Đà Nẵng trở vào</button><button class="btn sm" data-c02="yes">Có, theo vùng GHN</button></div></div>`}
+  </div>`;
+ }
+ if(S.c02){
+  const n=S.c02==='yes'?15:14;
+  if(S.scheduled)h+=`<div class="msg a"><div class="who">agent</div><div class="hero"><span class="big-ok" style="width:34px;height:34px;font-size:17px">✓</span><div>Đã tạo <b class="mono">LTL-42495-2026-11</b> · ${n} tuyến đổi giá · <span class="chip info">SCHEDULED 01/11/2026</span><div class="muted" style="font-size:13px">Hệ thống tự chuyển sang bảng mới lúc 00:00 ngày 01/11. Bạn không cần mở Portal.</div></div></div></div>`;
+  else h+=`<div class="confirm"><b>Tạo bản nháp mới và đặt lịch hiệu lực 01/11/2026?</b><div>${n} tuyến đổi giá. Bảng hiện tại vẫn active tới hết 31/10.</div><div class="btns"><button class="btn p" data-act="schedule">Duyệt và đặt lịch</button></div></div>`;
+ }
+ h+=`</div>`;
+ if(S.chat===0)h+=`<div class="sugg"><span class="muted" style="font-size:13px">Thử:</span><button data-act="send">${UMSG}</button></div>`;
+ h+=`<div class="composer"><input id="ask" placeholder="Nhắn thay đổi giá cho agent…" aria-label="Nhắn cho agent" ${S.chat?'disabled':''}><button class="btn p sm" data-act="send" ${S.chat?'disabled':''}>Gửi</button></div>`;
+ return h;
+}
+
+/* ---------- Bảng giá đã tạo ---------- */
+function tables(){
+ const rows=[S.scheduled?['LTL-42495-2026-11','Con Cưng','<span class="chip info">SCHEDULED</span>','01/11/2026','chat · Ngọc']:null,
+  S.created?['LTL-42495-2026-10','Con Cưng',S.scheduled?'<span class="chip ok">ACTIVE tới 31/10</span>':'<span class="chip">DRAFT</span>','01/10/2026','agent · Ngọc']:null,
+  ['LTL-40112-2026-09','Aqua','<span class="chip ok">ACTIVE</span>','15/09/2026','agent · Thanh'],
+  ['LTL-38870-2026-09','LG','<span class="chip ok">ACTIVE</span>','01/09/2026','làm tay · Uyên']].filter(Boolean);
+ return `<div><h1>Bảng giá đã tạo</h1><p class="lead">Bảng giá LTL trên hệ thống B2B do agent hoặc người tạo.</p></div>
+ <div class="tw"><table><thead><tr><th>Mã bảng giá</th><th>Khách</th><th>Trạng thái</th><th>Hiệu lực</th><th>Tạo bởi</th></tr></thead><tbody>${rows.map(r=>`<tr><td class="mono"><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td><td class="num">${r[3]}</td><td>${r[4]}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+function whyModal(){
+ const rows=[['Biết hệ thống cần gì','Viết sẵn trong prompt theo từng khách','Hỏi thẳng hệ thống B2B mỗi lần chạy'],['Đầu ra','File Excel, CS import tay','Bảng giá DRAFT tạo thẳng trên B2B sau khi người duyệt'],['Khách đổi giá','Làm lại từ đầu','Nhắn một câu, agent tạo nháp mới và đặt lịch'],['Dịch vụ','FTL','LTL, mở rộng được sang dịch vụ khác']];
+ return `<div class="modal" data-close="1"><div class="dlg" role="dialog" aria-label="Khác B2B Care ở đâu"><h1>Khác B2B Care ở đâu?</h1><p class="lead">B2B Care đã chứng minh AI làm được việc chuẩn bị cài giá. Platform giữ phần đã làm tốt (hỏi lại khi không chắc, báo cáo cho CS) và thêm 3 điểm dưới đây.</p><div class="tw"><table><thead><tr><th></th><th>B2B Care</th><th>GHN AI Platform</th></tr></thead><tbody>${rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div><div class="btns"><button class="btn p" data-close="1">Đóng</button></div></div></div>`;
+}
+
+/* ================= Platform ================= */
+Object.assign(S,{page:'wf',ws:'me',role:'member',tab:'pub',auth:{b2b_pricing:false,master_data:true,bigquery_b2b:false,google_drive:true},
+ ev:{wf:'tom_tat_hop_dong',step:1,ds:false,imp:false,traced:false,run:0,applied:false},pub:{},wsOpen:false});
+const WS=[{id:'me',name:'Cá nhân · Ngọc',sub:'workspace mặc định',joined:true},{id:'freight',name:'GHN Freight',sub:'12 thành viên · team Product Freight',joined:false,inv:true},{id:'pricing',name:'Pricing',sub:'6 thành viên · bảng giá, rule cài giá',joined:false},{id:'bd',name:'BD B2B',sub:'18 thành viên · workflow lên đơn từ file booking',joined:false}];
+const RS=[
+ {t:'skill',n:'cai_gia_ltl',s:'public',o:'Pricing',v:'v1',d:'Cách onboard bảng giá LTL: hỏi hệ thống trước, không chắc thì hỏi người.'},
+ {t:'skill',n:'doc_hop_dong_van_chuyen',s:'public',o:'Pricing',v:'v1',d:'Cách trích đơn vị, mức tối thiểu, hiệu lực từ hợp đồng, kèm số điều khoản.'},
+ {t:'skill',n:'len_don_tu_file',s:'public',o:'BD',v:'v2',d:'Cách map file booking của khách sang template import đơn B2B.'},
+ {t:'skill',n:'eval_setup',s:'public',o:'Platform',v:'v1',d:'Hướng dẫn từng bước set up eval cho một workflow.'},
+ {t:'skill',n:'tom_tat_dieu_khoan_gia',s:'private',o:'Ngọc',v:'v1',d:'Tóm tắt điều khoản giá trong hợp đồng thành 5 dòng cho BD.'},
+ {t:'kb',n:'archetype_ltl',s:'public',o:'Pricing',v:'v1',d:'4 kiểu cấu trúc bảng giá LTL và dấu hiệu nhận diện.'},
+ {t:'kb',n:'ruleset_cai_gia',s:'public',o:'Pricing',v:'v1',d:'6 rule cài giá, ví dụ 2 dòng cùng cấp khớp 1 địa chỉ là lỗi chặn.'},
+ {t:'kb',n:'master_data_lanes',s:'public',o:'Ops',v:'16/09',d:'Tỉnh, quận/huyện, vùng GHN. Tra qua connector master_data.'},
+ {t:'kb',n:'profile_ConCung',s:'private',o:'Ngọc',v:'v1',d:'Cách Con Cưng ghi bảng giá: cột "Tối thiểu (khối)" là MOQ theo tuyến.'},
+ {t:'kb',n:'mau_hop_dong_LTL',s:'private',o:'Ngọc',v:'v1',d:'3 hợp đồng LTL mẫu đã che thông tin.'},
+ {t:'mcp',n:'b2b_pricing',s:'shared',o:'B2B Dev',v:'v1',d:'Hệ thống cài giá B2B: đọc yêu cầu, đọc bảng active, tạo DRAFT, đặt lịch.',w:true},
+ {t:'mcp',n:'master_data',s:'shared',o:'Ops',v:'v5',d:'Master data địa chỉ và vùng GHN. Chỉ đọc.'},
+ {t:'mcp',n:'bigquery_b2b',s:'shared',o:'Data',v:'v1',d:'Doanh thu B2B trên BigQuery. Chỉ đọc.'},
+ {t:'mcp',n:'google_drive',s:'private',o:'Ngọc',v:'',d:'Google Drive cá nhân của Ngọc.'}
+];
+const TN={skill:'Skill',kb:'Knowledge base',mcp:'MCP connector'};
+const WFL={
+ cai_gia_ltl:{n:'Cài bảng giá LTL cho khách mới',s:'public',o:'Product + Pricing',in:'Bảng giá khách (Excel) + hợp đồng (PDF)',out:'Bảng giá DRAFT trên hệ thống B2B + báo cáo cho CS',use:[['Skill','cai_gia_ltl'],['Skill','doc_hop_dong_van_chuyen'],['Knowledge','archetype_ltl'],['Knowledge','ruleset_cai_gia'],['Knowledge','profile_ConCung'],['Tool','b2b_pricing'],['Tool','master_data']],proc:['Đọc file và hợp đồng','Hỏi hệ thống B2B cần gì','Sinh nháp, kiểm tra rule','Hỏi người, duyệt','Tạo DRAFT'],eval:'619/619 tuyến · 16/09',runs:3,live:'run'},
+ cap_nhat_gia:{n:'Cập nhật bảng giá bằng chat',s:'public',o:'Product + Pricing',in:'Tin nhắn thay đổi giá',out:'Bảng giá nháp mới + lịch hiệu lực',use:[['Skill','cai_gia_ltl'],['Knowledge','profile_ConCung'],['Tool','b2b_pricing'],['Tool','master_data']],proc:['Đọc bảng active','Áp thay đổi, sinh nháp','Hỏi người, duyệt','Đặt lịch hiệu lực'],eval:'42/42 case · 18/09',runs:1,live:'update'},
+ len_don_tu_file:{n:'Lên đơn B2B từ file booking',s:'public',o:'BD',in:'File booking của khách',out:'File import đơn B2B',use:[['Skill','len_don_tu_file'],['Tool','master_data']],proc:['Đọc file','Map sang template','Chuẩn hóa địa chỉ','Người duyệt'],eval:'20/20 case · 12/09',runs:41},
+ tom_tat_hop_dong:{n:'Tóm tắt điều khoản giá từ hợp đồng',s:'private',o:'Ngọc',in:'Hợp đồng vận chuyển (PDF)',out:'5 dòng tóm tắt: đơn vị, tối thiểu, hiệu lực, phụ phí, phụ lục giá',use:[['Skill','tom_tat_dieu_khoan_gia'],['Skill','doc_hop_dong_van_chuyen'],['Knowledge','mau_hop_dong_LTL']],proc:['Đọc hợp đồng','Trích điều khoản giá','Viết tóm tắt'],eval:null,runs:8}
+};
+const POL=[
+ ['PL-01','Tool ghi ra hệ thống thật phải có bước người duyệt','Workflow dùng tool ghi','Chặn',true],
+ ['PL-02','Workflow public phải có eval đạt từ 95% trở lên','Mọi workflow public','Chặn',true],
+ ['PL-03','Connector dùng token của từng người, không dùng token chung','Mọi connector','Chặn',true],
+ ['PL-04','Dữ liệu khách chỉ gửi tới model trong danh sách duyệt','Workflow đọc dữ liệu khách','Chặn',true],
+ ['PL-05','Agent không được active bảng giá','Workflow chạm bảng giá','Chặn',true],
+ ['PL-06','Workflow chạy quá 500 lần/ngày phải báo Security','Mọi workflow','Cảnh báo',false]
+];
+function evalOk(k){return k==='tom_tat_hop_dong'?S.ev.run===2:!!WFL[k].eval}
+function checks(k){const w=WFL[k];const write=w.use.some(u=>u[1]==='b2b_pricing');
+ return [['PL-01',write?'Có bước "Hỏi người, duyệt" trước tool ghi':'Không dùng tool ghi',true],
+  ['PL-02',evalOk(k)?`Eval đạt ${k==='tom_tat_hop_dong'?'17/17 case (100%)':w.eval}`:'Chưa có eval',evalOk(k)],
+  ['PL-03','Connector dùng token cá nhân',true],['PL-04','Model trong danh sách duyệt',true]]}
+function scopeChip(s){return s==='public'?'<span class="chip ok">Public</span>':s==='shared'?'<span class="chip info">Dùng chung</span>':'<span class="chip">Riêng</span>'}
+const wsName=()=>WS.find(w=>w.id===S.ws).name;
+
+function sideP(){
+ const it=(k,l,c)=>`<button class="sbtn ${S.page===k||(k==='wf'&&['wfd','run','update'].includes(S.page))?'on':''}" data-page="${k}"><span>${l}</span>${c!=null?`<em>${c}</em>`:''}</button>`;
+ const chatBtn=`<button class="sbtn new ${S.page==='chat'?'on':''}" data-page="chat"><span>+ Chat với agent</span></button>`;
+ $('#side').innerHTML=`<div class="wsbox"><button class="wsbtn" data-act="wsmenu"><span class="wsav">${wsName()[0]}</span><span style="min-width:0"><b>${wsName()}</b><small>${S.ws==='me'?'workspace riêng':'workspace chung'}</small></span><span>▾</span></button>
+ ${S.wsOpen?`<div class="wsmenu">${WS.filter(w=>w.joined).map(w=>`<button data-ws="${w.id}" class="${S.ws===w.id?'on':''}"><span class="wsav">${w.name[0]}</span>${w.name}</button>`).join('')}<button data-act="join">+ Tham gia workspace</button></div>`:''}</div>`+chatBtn+
+ it('wf','Workflows',Object.keys(WFL).length)+it('skill','Skills',RS.filter(r=>r.t==='skill').length)+it('kb','Knowledge base',RS.filter(r=>r.t==='kb').length)+it('mcp','MCP connectors',RS.filter(r=>r.t==='mcp').length)+
+ `<div class="sdiv"></div>`+it('eval','Eval')+it('policy','Policy guardrail')+
+ `<div class="side-note">${S.role==='admin'?'Bạn đang xem với vai trò <b>Super admin</b>.':'Agent chỉ ghi ra hệ thống thật khi có người duyệt.'}</div>`;
+}
+function tabs(a,b){return `<div class="tabs2"><button class="${S.tab==='mine'?'on':''}" data-tab="mine">${a}</button><button class="${S.tab==='pub'?'on':''}" data-tab="pub">${b}</button></div>`}
+function head(t,sub,btn){return `<div class="btns" style="justify-content:space-between;align-items:flex-start"><div><h1>${t}</h1><p class="lead">${sub}</p></div>${btn||''}</div>`}
+
+function wfList(){
+ const mine=S.tab==='mine';const list=Object.entries(WFL).filter(([k,w])=>mine?(w.o==='Ngọc'||w.s==='private'):w.s==='public');
+ return head('Workflows','Workflow là một mini app: nhận input, chạy các bước process bằng skill, knowledge base và connector, trả ra output.','<button class="btn p" data-act="newwf">+ Tạo workflow</button>')+tabs('Của tôi','Public')+
+ `<div class="wfgrid">${list.length?list.map(([k,w])=>`<div class="wfcard"><div class="btns" style="justify-content:space-between"><b style="font-size:15px">${w.n}</b>${scopeChip(w.s)}</div>
+ <div class="io"><div><i>Input</i>${w.in}</div><div><i>Output</i>${w.out}</div></div>
+ <div class="muted" style="font-size:12px">${w.o} · ${w.proc.length} bước · ${w.runs} run · eval: ${evalOk(k)?'<span style="color:var(--green)">đạt</span>':'<span style="color:var(--amber)">chưa có</span>'}</div>
+ <div class="btns" style="margin-top:auto"><button class="btn sm" data-wf="${k}">Mở</button>${w.live?`<button class="btn p sm" data-runwf="${k}">Chạy</button>`:''}</div></div>`).join(''):'<p class="muted">Chưa có workflow nào.</p>'}</div>`;
+}
+function wfDetail(){const k=S.wf,w=WFL[k];
+ const btn=w.s==='private'?`<button class="btn p" data-act="publish">Publish cho mọi người</button>`:w.live?`<button class="btn p" data-runwf="${k}">Chạy workflow</button>`:'';
+ return `<div class="crumb"><button class="link" data-page="wf">Workflows</button> / ${w.n}</div>`+head(w.n,`${w.o} · ${w.runs} run tháng này`,`<div class="btns">${scopeChip(w.s)}${btn}</div>`)+
+ `<div class="pipe"><div class="pcol"><i>Input</i><b>${w.in}</b></div><div class="parr">→</div><div class="pcol proc"><i>Process</i>${w.proc.map((p,j)=>`<div class="pstep"><span>${j+1}</span>${p}</div>`).join('')}</div><div class="parr">→</div><div class="pcol"><i>Output</i><b>${w.out}</b></div></div>
+ <div class="card"><h2>Dùng những tài nguyên nào</h2><div class="btns" style="gap:6px">${w.use.map(rc).join('')}</div></div>
+ <div class="card"><div class="btns" style="justify-content:space-between"><h2>Kiểm tra của Policy guardrail agent</h2><button class="link" data-page="policy">Xem policy</button></div>
+ ${checks(k).map(c=>`<div class="chk ${c[2]?'ok':'bad'}"><span>${c[2]?'✓':'✕'}</span><b class="mono">${c[0]}</b><span>${c[1]}</span>${!c[2]&&c[0]==='PL-02'?'<button class="btn sm p" data-act="goeval">Set up eval</button>':''}</div>`).join('')}</div>`;
+}
+function resList(t){
+ const pubLabel=t==='mcp'?'Dùng chung':'Public library';const mine=S.tab==='mine';
+ const list=RS.filter(r=>r.t===t&&(mine?r.s==='private':r.s!=='private'));
+ const def={skill:'Cách làm một loại việc, viết bằng lời. Dùng skill riêng hoặc lấy từ library public.',kb:'Tài liệu và dữ liệu nghiệp vụ. KB riêng chỉ bạn thấy, KB public cả công ty dùng chung.',mcp:'Nối agent tới hệ thống thật. Connector dùng chung cho mọi workspace, nhưng mỗi người phải tự kết nối bằng tài khoản của mình.'}[t];
+ return head(TN[t]+'s',def,`<button class="btn p" data-act="newres" data-t="${t}">+ ${t==='mcp'?'Thêm connector':'Tạo '+TN[t].toLowerCase()}</button>`)+tabs(t==='mcp'?'Riêng':'Của tôi',pubLabel)+
+ `<div class="tw"><table><thead><tr><th>Tên</th><th>Phạm vi</th><th>Chủ sở hữu</th><th>Mô tả</th>${t==='mcp'?'<th>Tài khoản của bạn</th>':'<th>Phiên bản</th>'}</tr></thead><tbody>${list.map(r=>`<tr><td class="mono"><b>${r.n}</b>${r.w?' <span class="chip bad">có ghi</span>':''}</td><td>${scopeChip(r.s)}</td><td>${r.o}</td><td class="muted">${r.d}</td>${t==='mcp'?`<td>${S.auth[r.n]?'<span class="chip ok">đã kết nối</span>':`<button class="btn sm" data-auth="${r.n}">Kết nối tài khoản</button>`}</td>`:`<td class="mono">${r.v}</td>`}</tr>`).join('')||'<tr><td colspan="5" class="muted">Chưa có.</td></tr>'}</tbody></table></div>`;
+}
+
+/* ---------- Eval ---------- */
+const TRACES=[['30/09 09:12','Ngọc','HD_Aqua_2026.pdf','đúng',false],['29/09 16:40','Thanh','HD_LG_LTL.pdf','BD sửa tay mức tối thiểu',true],['29/09 10:05','Ngọc','HD_Xiaomi_ROAD.pdf','đúng',false],['28/09 14:22','Hà','HD_Anta_2026.pdf','BD sửa tay hiệu lực',true],['27/09 11:30','Ngọc','HD_Mondelez.pdf','đúng',false],['26/09 09:50','Thanh','HD_SEEDCOM.pdf','BD sửa tay phụ lục',true]];
+function evPage(){const E=S.ev;const L=['Chọn workflow','Ground truth dataset','Tracing','Cách đánh giá','Chạy và báo cáo'];
+ const nds=(E.imp?12:0)+(E.traced?5:0);
+ const bubble=t=>`<div class="bot"><span class="wsav" style="background:var(--blue)">e</span><div><div class="who">skill eval_setup</div>${t}</div></div>`;
+ let body='';
+ if(E.step===1)body=bubble('Mình hướng dẫn bạn set up eval trong 5 bước. Chọn workflow cần đánh giá.')+`<div class="card"><div class="row"><label for="evwf">Workflow</label><select id="evwf">${Object.entries(WFL).map(([k,w])=>`<option value="${k}" ${E.wf===k?'selected':''}>${w.n}${evalOk(k)?' · đã có eval':''}</option>`).join('')}</select></div><div class="note">Workflow này đang ${WFL[E.wf].s==='private'?'riêng tư. Muốn publish thì policy PL-02 yêu cầu eval đạt từ 95%.':'public.'}</div></div>`;
+ if(E.step===2)body=bubble('Ground truth là bộ case đã có đáp án đúng do người verify. Bạn có thể import file, hoặc lấy từ các convo thật ở bước sau.')+
+  `<div class="card"><h2>Thư viện dataset</h2><div class="tw"><table><thead><tr><th>Dataset</th><th>Workflow</th><th class="r">Số case</th><th>Cập nhật</th></tr></thead><tbody><tr><td class="mono">golden_ltl_619</td><td>Cài bảng giá LTL</td><td class="r num">619</td><td class="num">16/09</td></tr><tr><td class="mono">booking_20</td><td>Lên đơn từ file booking</td><td class="r num">20</td><td class="num">12/09</td></tr>${E.ds?`<tr class="chg"><td class="mono"><b>hop_dong_da_verify</b></td><td>Tóm tắt điều khoản giá</td><td class="r num">${nds}</td><td class="num">30/09</td></tr>`:''}</tbody></table></div>
+  <div class="btns">${E.ds?(E.imp?'<span class="chip ok">Đã import 12 case từ mau_hop_dong_verify.xlsx</span>':'<button class="btn sm" data-act="imp">Import file ground truth (12 case)</button>'):'<button class="btn sm p" data-act="newds">+ Tạo dataset hop_dong_da_verify</button>'}</div></div>`;
+ if(E.step===3)body=bubble('Đây là các convo đã dùng workflow. Convo mà BD phải sửa tay là case rất tốt để đưa vào dataset, vì agent từng làm sai ở đó.')+
+  `<div class="card"><h2>Trace convo · ${WFL[E.wf].n}</h2><div class="tw"><table><thead><tr><th></th><th>Thời gian</th><th>Người dùng</th><th>Input</th><th>Kết quả</th></tr></thead><tbody>${TRACES.map((t,i)=>`<tr class="${t[4]?'warn':''}"><td><input type="checkbox" id="tr${i}" ${t[4]||i===0||i===2?'checked':''} ${E.traced?'disabled':''} aria-label="chọn convo ${i+1}"></td><td class="num">${t[0]}</td><td>${t[1]}</td><td class="mono">${t[2]}</td><td>${t[4]?`<span class="chip warn">${t[3]}</span>`:'<span class="chip ok">đúng</span>'}</td></tr>`).join('')}</tbody></table></div>
+  <div class="btns">${E.traced?`<span class="chip ok">Đã thêm 5 convo vào hop_dong_da_verify · tổng ${nds} case</span>`:'<button class="btn sm p" data-act="trace">Thêm 5 convo đã chọn vào dataset</button>'}</div></div>`;
+ if(E.step===4)body=bubble('Mình đề xuất cách chấm dưới đây dựa trên output của workflow. Bạn bật tắt hoặc đổi cách chấm cho từng tiêu chí.')+
+  `<div class="card"><h2>Tiêu chí</h2><div class="tw"><table><thead><tr><th></th><th>Tiêu chí</th><th>Cách chấm</th></tr></thead><tbody>${[['Đơn vị tính đúng','So khớp chính xác'],['Mức tối thiểu đúng','So khớp chính xác'],['Hiệu lực đúng','So khớp ngày'],['Mỗi ý có số điều khoản','Rule: có "điều" hoặc "phụ lục"'],['Tóm tắt dễ hiểu cho BD','LLM chấm 1 đến 5, đạt từ 4']].map((c,i)=>`<tr><td><input type="checkbox" checked id="cr${i}" aria-label="${c[0]}"></td><td><b>${c[0]}</b></td><td><select aria-label="cách chấm ${c[0]}"><option>${c[1]}</option><option>So khớp chính xác</option><option>LLM chấm</option></select></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="card"><h2>Rule chạy eval</h2><div class="chk ok"><span>✓</span><span>Chạy lại mỗi khi đổi phiên bản skill hoặc knowledge base của workflow</span></div><div class="chk ok"><span>✓</span><span>Ngưỡng đạt: <b>95%</b> case đúng mọi tiêu chí</span></div><div class="chk ok"><span>✓</span><span>Dưới ngưỡng thì chặn publish (theo PL-02)</span></div></div>`;
+ if(E.step===5){
+  if(!E.run)body=bubble(`Sẵn sàng chạy ${nds||17} case với 5 tiêu chí.`)+`<div class="btns"><button class="btn p" data-act="runeval">Chạy eval</button></div>`;
+  else{const pass=E.run===2;const ok=pass?17:15;
+   body=bubble(pass?'Sau khi áp đề xuất, workflow đạt 17/17. Bạn có thể quay lại publish.':'Workflow đạt 15/17 (88%), dưới ngưỡng 95%. 2 case sai cùng một lỗi. Mình đề xuất 2 thay đổi.')+
+   `<div class="stats"><div class="stat"><b style="color:${pass?'var(--green)':'var(--red)'}">${ok}/17</b><span>case đạt</span></div><div class="stat"><b>${pass?'100':'88'}%</b><span>ngưỡng 95%</span></div><div class="stat"><b>${pass?'5/5':'4/5'}</b><span>tiêu chí đạt 100%</span></div><div class="stat"><b>${pass?'v2':'v1'}</b><span>skill tom_tat_dieu_khoan_gia</span></div></div>
+   <div class="card"><h2>Theo tiêu chí</h2><div class="tw"><table><tbody>${[['Đơn vị tính đúng','17/17'],['Mức tối thiểu đúng',pass?'17/17':'15/17'],['Hiệu lực đúng','17/17'],['Mỗi ý có số điều khoản','17/17'],['Tóm tắt dễ hiểu cho BD','17/17 · trung bình 4,6']].map(r=>`<tr class="${r[1].startsWith('15')?'bad':''}"><td>${r[0]}</td><td class="r num">${r[1]}</td></tr>`).join('')}</tbody></table></div></div>
+   ${pass?'':`<div class="card"><h2>Case sai</h2><div class="tw"><table><thead><tr><th>Case</th><th>Agent trả</th><th>Đáp án đúng</th></tr></thead><tbody><tr><td class="mono">HD_LG_LTL.pdf</td><td>Không có mức tối thiểu</td><td>1 CBM mỗi lô (phụ lục 1)</td></tr><tr><td class="mono">HD_SEEDCOM.pdf</td><td>0,5 CBM</td><td>50 KG mỗi lô (phụ lục 2)</td></tr></tbody></table></div></div>
+   <div class="card"><h2>Đề xuất chỉnh workflow</h2><div class="chk ok"><span>1</span><span>Skill <b class="mono">tom_tat_dieu_khoan_gia</b>: tìm mức tối thiểu cả trong phụ lục, không chỉ thân hợp đồng</span></div><div class="chk ok"><span>2</span><span>Skill: giữ nguyên đơn vị gốc (KG hay CBM), không tự quy đổi</span></div><div class="btns"><button class="btn p" data-act="apply">Áp dụng, tạo skill v2 và chạy lại</button></div></div>`}
+   ${pass?`<div class="btns"><button class="btn p" data-act="backpub">Quay lại publish workflow</button></div>`:''}`}
+ }
+ const can=[true,true,E.ds,E.traced,true,false][E.step];
+ return head('Eval','Đánh giá workflow trên ground truth trước khi publish, và mỗi khi thay đổi. Skill eval_setup hướng dẫn từng bước.','')+
+ `<div class="stepper s5">${L.map((l,i)=>`<div class="${E.step===i+1?'on':E.step>i+1?'done':''}" data-evs="${i+1}"><span>${E.step>i+1?'✓':i+1}</span>${l}</div>`).join('')}</div>`+body+
+ (E.step<5?`<div class="btns">${E.step>1?'<button class="btn" data-act="evprev">Quay lại</button>':''}<button class="btn p" data-act="evnext" ${can?'':'disabled'}>Tiếp</button></div>`:'');
+}
+
+/* ---------- Policy guardrail ---------- */
+function polPage(){const adm=S.role==='admin';
+ return head('Policy guardrail','Super admin ban hành policy. Guardrail agent kiểm mọi workflow khi tạo, publish và khi chạy.',adm?'<button class="btn p" data-act="newpol">+ Ban hành policy</button>':'')+
+ (adm?'':'<div class="note" style="border:1px solid var(--line);border-radius:8px;padding:10px 12px">Bạn đang xem. Chỉ super admin mới ban hành hoặc tắt policy. <button class="link" data-act="role">Chuyển sang Super admin</button></div>')+
+ `<div class="tw"><table><thead><tr><th>Mã</th><th>Policy</th><th>Áp cho</th><th>Hành động</th><th>Bật</th></tr></thead><tbody>${POL.map((p,i)=>`<tr><td class="mono">${p[0]}</td><td><b>${p[1]}</b></td><td>${p[2]}</td><td>${p[3]==='Chặn'?'<span class="chip bad">Chặn</span>':'<span class="chip warn">Cảnh báo</span>'}</td><td><button class="tog ${p[4]?'on':''}" data-pol="${i}" ${adm?'':'disabled'} aria-label="bật tắt ${p[0]}"><span></span></button></td></tr>`).join('')}</tbody></table></div>
+ <div class="card"><h2>Nhật ký guardrail agent</h2><div class="tw"><table><thead><tr><th>Thời gian</th><th>Workflow</th><th>Sự kiện</th><th>Kết quả</th></tr></thead><tbody>${(S.log||[]).concat([['30/09 09:47','Cài bảng giá LTL','Tool ghi create_draft','<span class="chip ok">cho phép · có mã duyệt APR-2f91</span>'],['29/09 17:02','Xuất doanh thu ra Drive','Publish','<span class="chip bad">chặn · PL-04</span>'],['29/09 10:15','Lên đơn từ file booking','Chạy','<span class="chip ok">cho phép</span>']]).map(r=>`<tr><td class="num">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+/* ---------- Modals ---------- */
+function dlg(t,body,foot){return `<div class="modal"><div class="dlg" role="dialog" aria-label="${t}"><div class="btns" style="justify-content:space-between"><h1>${t}</h1><button class="btn sm" data-close="1" aria-label="Đóng">✕</button></div>${body}<div class="btns" style="justify-content:flex-end">${foot}<button class="btn" data-close="1">Hủy</button></div></div></div>`}
+function joinModal(){return dlg('Tham gia workspace',`<p class="lead">Workspace chung là nơi một team dùng chung workflow, skill và knowledge base.</p>${WS.filter(w=>w.id!=='me').map(w=>`<div class="chk ok" style="justify-content:space-between"><span class="wsav">${w.name[0]}</span><span style="flex:1"><b>${w.name}</b><br><small class="muted">${w.sub}</small></span>${w.joined?'<span class="chip ok">đã tham gia</span>':`<button class="btn sm p" data-join="${w.id}">Tham gia</button>`}</div>`).join('')}`,'')}
+function pubModal(){const k=S.wf;const c=checks(k);const ok=c.every(x=>x[2]);
+ return dlg('Publish workflow',`<p class="lead">Guardrail agent kiểm <b>${WFL[k].n}</b> theo policy của công ty.</p>${c.map(x=>`<div class="chk ${x[2]?'ok':'bad'}"><span>${x[2]?'✓':'✕'}</span><b class="mono">${x[0]}</b><span>${x[1]}</span></div>`).join('')}${ok?'<div class="note">Đạt mọi policy. Sau khi publish, mọi người trong công ty đều thấy và chạy được workflow này.</div>':'<div class="note">Chưa publish được: PL-02 yêu cầu eval đạt từ 95%.</div>'}`,
+ ok?'<button class="btn p" data-act="dopub">Publish</button>':'<button class="btn p" data-act="goeval">Set up eval với skill eval_setup</button>')}
+function newResModal(t){return dlg(`Tạo ${TN[t].toLowerCase()}`,`<div class="card" style="border:0;padding:0"><div class="row"><label for="nr-n">Tên</label><input class="inp" id="nr-n" value="${t==='skill'?'kiem_tra_phu_phi':t==='kb'?'bang_phu_phi_2026':'google_sheets'}"></div>${t==='mcp'?'<div class="row"><label for="nr-u">MCP endpoint</label><input class="inp" id="nr-u" value="https://mcp.ghn.internal/sheets"></div>':`<div class="row" style="align-items:start"><label for="nr-c">Nội dung</label><textarea class="inp" id="nr-c" rows="5">${t==='skill'?'1. Đọc bảng phụ phí trong hợp đồng.\n2. So với bang_phu_phi_2026.\n3. Lệch thì hỏi người, không tự chọn.':'Bảng phụ phí vùng sâu vùng xa 2026, nguồn Pricing.'}</textarea></div>`}<div class="row"><label for="nr-s">Phạm vi</label><select id="nr-s"><option value="private">Riêng · chỉ mình tôi</option><option value="public">${t==='mcp'?'Dùng chung':'Public'} · cả công ty</option></select></div></div>`,`<button class="btn p" data-act="saveres" data-t="${t}">Tạo</button>`)}
+function newWfModal(){const opts=RS.filter(r=>r.s!=='private'||r.o==='Ngọc');
+ return dlg('Tạo workflow',`<div class="card" style="border:0;padding:0"><div class="row"><label for="nw-n">Tên</label><input class="inp" id="nw-n" value="Kiểm tra phụ phí trong hợp đồng"></div><div class="row"><label for="nw-i">Input</label><input class="inp" id="nw-i" value="Hợp đồng vận chuyển (PDF)"></div>
+ <div class="row" style="align-items:start"><span>Process dùng</span><div class="btns" style="gap:6px">${opts.map(r=>`<label class="pick"><input type="checkbox" ${['doc_hop_dong_van_chuyen','mau_hop_dong_LTL'].includes(r.n)?'checked':''}> ${rc([r.t==='skill'?'Skill':r.t==='kb'?'Knowledge':'Tool',r.n])}</label>`).join('')}</div></div>
+ <div class="row"><label for="nw-o">Output</label><input class="inp" id="nw-o" value="Danh sách phụ phí lệch so với bảng chuẩn"></div><div class="row"><span>Phạm vi</span><span>Riêng · publish sau khi qua guardrail</span></div></div>`,'<button class="btn p" data-act="savewf">Tạo workflow</button>')}
+function authModal(){return dlg('Cần kết nối tài khoản',`<p>Workflow này dùng connector <b class="mono">b2b_pricing</b>. Connector dùng chung cho mọi workspace, nhưng bạn phải kết nối bằng tài khoản B2B của mình. Agent chỉ làm được những gì tài khoản của bạn được phép.</p>`,'<button class="btn p" data-auth="b2b_pricing" data-then="run">Kết nối tài khoản B2B</button>')}
+
+/* ================= Chat + Output view ================= */
+S.page='chat';S.cs=0;S.out=null;S.uc=0;
+function outs(){const o=[];if(S.cs>=1&&S.prog>=3)o.push(['req','Yêu cầu hệ thống B2B']);if(S.cs>=2)o.push(['draft','Nháp bảng giá · Con Cưng']);if(S.created)o.push(['res','Bảng giá DRAFT']);if(S.uc>=1)o.push(['diff','Nháp cập nhật giá']);return o}
+function am(html,who){return `<div class="cm a"><div class="av">G</div><div class="cb"><div class="who">${who||'agent'}</div>${html}</div></div>`}
+function um(html){return `<div class="cm u"><div class="cb">${html}</div></div>`}
+function chatCol(){
+ let h=am(`<div>Chào Ngọc. Giao việc cho mình bằng một câu, hoặc chọn một workflow. Kết quả sẽ hiện ở khung bên phải.</div>`);
+ if(S.cs===0&&S.uc===0)h+=`<div class="sugg2"><button data-act="cstart"><b>Cài bảng giá LTL cho Con Cưng</b><span>workflow Cài bảng giá LTL · 2 file</span></button><button data-act="ustart"><b>Con Cưng tăng 5% tuyến miền Trung từ 1/11</b><span>workflow Cập nhật bảng giá bằng chat</span></button><button data-page="eval"><b>Set up eval cho workflow của tôi</b><span>skill eval_setup</span></button></div>`;
+ if(S.cs>=1){
+  h+=um(`Cài bảng giá LTL cho Con Cưng (KH 42495) từ 2 file này<div class="fch"><span class="fi x">XLS</span>Bang_gia_ConCung_2026.xlsx</div><div class="fch"><span class="fi p">PDF</span>Hop_dong_ConCung_LTL_2026.pdf</div>`);
+  h+=am(`<div class="btns" style="gap:6px"><span class="chip info">workflow · Cài bảng giá LTL</span><span class="chip">Riêng · Ngọc</span></div><div class="steps">${STEPS.map((s,i)=>{const st=i<S.prog?'done':i===S.prog?'run':'wait';return `<div class="st ${st}"><span class="ic">${st==='done'?'✓':i+1}</span><div style="display:flex;flex-direction:column;gap:3px"><b>${s[0]}</b>${st==='done'?`<div class="res">${s[1]}</div><div class="btns" style="gap:4px">${s[2].map(rc).join('')}</div>`:st==='run'?'<div class="res">đang làm…</div>':''}</div></div>`}).join('')}</div>`);
+ }
+ if(S.cs>=2){
+  h+=am(`<div>Nháp đã sinh đúng 7 yêu cầu của hệ thống B2B (xem khung bên phải). Có 2 chỗ mình không tự quyết:</div>
+  <div class="q ${S.a.c01?'done':''}"><div class="h"><span class="chip warn">1</span>Hợp đồng ghi tối thiểu 0,5 CBM chung, file ghi MOQ theo tuyến (3 tuyến 1 CBM). Theo bên nào?</div>${S.a.c01?`<div class="trace">✓ ${S.a.c01==='file'?'Theo file, MOQ theo tuyến':'Theo hợp đồng, 0,5 CBM chung'}</div>`:'<div class="btns"><button class="btn p sm" data-ans="c01:file">Theo file</button><button class="btn sm" data-ans="c01:hd">Theo hợp đồng</button></div>'}</div>
+  <div class="q ${S.a.p03?'done':''}"><div class="h"><span class="chip warn">2</span>TP. Thủ Đức và Q.9 (cũ) trùng một địa chỉ. B2B sẽ chặn khi import.</div>${S.a.p03?`<div class="trace">✓ ${S.a.p03==='drop'?'Bỏ Q.9 cũ, giữ Thủ Đức':'Giữ cả 2, hỏi lại khách'}</div>`:'<div class="btns"><button class="btn p sm" data-ans="p03:drop">Bỏ Q.9 cũ</button><button class="btn sm" data-ans="p03:keep">Giữ cả 2</button></div>'}</div>`);
+  if(S.a.c01&&S.a.p03){const n=S.a.p03==='drop'?128:129;
+   h+=am(S.created?`<div class="hero"><span class="big-ok" style="width:30px;height:30px;font-size:15px">✓</span><div>Đã tạo <b class="mono">LTL-42495-2026-10</b> · DRAFT · ${n} tuyến. Bảng giá chờ BD active trên Portal.</div></div><div class="muted" style="font-size:12.5px">Policy guardrail: tool ghi <span class="mono">create_draft</span> được phép vì có mã duyệt APR-2f91.</div>`:
+    `<div>Sẵn sàng tạo bảng giá <b>DRAFT</b> trên B2B: ${n} tuyến, hiệu lực 01/10/2026. Mình không active được bảng giá.</div><div class="btns"><button class="btn p sm" data-act="ccreate">Duyệt và tạo DRAFT</button></div>`);
+  }
+ }
+ if(S.uc>=1){
+  h+=um(UMSG);
+  h+=am(`<div class="btns" style="gap:6px"><span class="chip info">workflow · Cập nhật bảng giá bằng chat</span></div><div>Đã đọc bảng active <span class="mono">LTL-42495-2026-10</span>. 14 tuyến miền Trung đổi giá (xem khung bên phải).</div>
+  ${S.c02?`<div class="trace">✓ ${S.c02==='no'?'Không tính Nghệ An':'Tính Nghệ An theo vùng GHN'}</div>`:'<div class="q"><div class="h"><span class="chip warn">?</span>Con Cưng chưa định nghĩa miền Trung. Có tính Nghệ An không?</div><div class="btns"><button class="btn p sm" data-c02="no">Không, từ Đà Nẵng trở vào</button><button class="btn sm" data-c02="yes">Có, theo vùng GHN</button></div></div>'}`);
+  if(S.c02)h+=am(S.scheduled?`<div class="hero"><span class="big-ok" style="width:30px;height:30px;font-size:15px">✓</span><div>Đã tạo <b class="mono">LTL-42495-2026-11</b> và đặt lịch hiệu lực <b>01/11/2026</b>. Bạn không cần mở Portal.</div></div>`:`<div>Tạo nháp mới và đặt lịch 01/11? Bảng hiện tại vẫn active tới 31/10.</div><div class="btns"><button class="btn p sm" data-act="usched">Duyệt và đặt lịch</button></div>`);
+ }
+ h+=S.extra.join('');
+ if(S.created&&S.uc===0)h+=`<div class="sugg2"><button data-act="ustart"><b>${UMSG}</b><span>thử cập nhật bảng giá bằng chat</span></button></div>`;
+ return h;
+}
+function outPanel(){
+ const o=outs();if(!o.length)return `<div class="oempty"><div class="oico">▢</div><b>Output của agent hiện ở đây</b><div class="muted" style="font-size:13px;max-width:36ch">Bảng giá nháp, bảng so sánh, báo cáo. Bạn xem và duyệt ngay bên cạnh cuộc chat.</div></div>`;
+ const cur=S.out&&o.some(x=>x[0]===S.out)?S.out:o[o.length-1][0];
+ let b='';
+ if(cur==='req')b=`<h2>Yêu cầu cài giá LTL của hệ thống B2B</h2><p class="lead">Agent hỏi hệ thống lúc 09:41 qua connector <span class="mono">b2b_pricing</span>. Nháp sẽ sinh đúng theo khung này.</p>${reqTable()}`;
+ if(cur==='draft'){const ok=S.a.c01&&S.a.p03;b=`<div class="btns" style="justify-content:space-between"><h2>Nháp bảng giá · Con Cưng</h2>${S.created?'<span class="chip">đã tạo DRAFT</span>':'<span class="chip warn">nháp, chưa lên B2B</span>'}</div>
+ <div class="stats"><div class="stat"><b>130</b><span>tuyến</span></div><div class="stat"><b style="color:var(--green)">127</b><span>hợp lệ</span></div><div class="stat"><b style="color:${ok?'var(--green)':'var(--amber)'}">${ok?0:2-(S.a.c01?1:0)-(S.a.p03?1:0)}</b><span>cần bạn quyết</span></div><div class="stat"><b style="color:var(--amber)">1</b><span>chờ Ops</span></div></div>
+ <dl class="kv"><dt>Đơn vị</dt><dd>CBM · hợp đồng điều 4.1</dd><dt>Tối thiểu</dt><dd>${S.a.c01==='hd'?'0,5 CBM chung':'MOQ theo tuyến'} ${S.a.c01?'':'<span class="chip warn">chờ bạn</span>'}</dd><dt>Bậc</dt><dd>1 bậc, đơn giá theo CBM</dd><dt>Hiệu lực</dt><dd>01/10/2026 · hợp đồng điều 9</dd></dl>
+ <div class="tw"><table><thead><tr><th>#</th><th>Điểm lấy</th><th>Điểm giao</th><th class="r">MOQ</th><th class="r">Đơn giá / CBM</th><th>Kiểm tra</th></tr></thead><tbody>${laneRows()}</tbody></table></div>`}
+ if(cur==='res')b=s4().split('<div class="card" style="flex-direction:row')[0];
+ if(cur==='diff')b=`<div class="btns" style="justify-content:space-between"><h2>Nháp cập nhật · hiệu lực 01/11</h2>${S.scheduled?'<span class="chip info">SCHEDULED</span>':'<span class="chip warn">chờ duyệt</span>'}</div><div class="tw"><table><thead><tr><th>Điểm giao</th><th class="r">Giá hiện tại</th><th class="r">Giá mới</th></tr></thead><tbody>
+  <tr class="chg"><td>Đà Nẵng</td><td class="r num">190.000</td><td class="r num newp">200.000</td></tr><tr class="chg"><td>Huế</td><td class="r num">190.000</td><td class="r num newp">200.000</td></tr><tr class="chg"><td>Quảng Nam</td><td class="r num">205.000</td><td class="r num newp">216.000</td></tr><tr class="chg"><td>Quảng Ngãi</td><td class="r num">215.000</td><td class="r num newp">226.000</td></tr>
+  <tr class="${S.c02==='yes'?'chg':S.c02?'':'warn'}"><td>Nghệ An</td><td class="r num">160.000</td><td class="r num ${S.c02==='yes'?'newp':''}">${S.c02==='yes'?'168.000':S.c02==='no'?'160.000 (giữ)':'?'}</td></tr><tr><td colspan="3" class="muted">… 10 tuyến miền Trung khác +5% · 115 tuyến giữ nguyên</td></tr></tbody></table></div>`;
+ return `<div class="otabs">${o.map(x=>`<button class="${x[0]===cur?'on':''}" data-out="${x[0]}">${x[1]}</button>`).join('')}</div><div class="obody">${b}</div>`;
+}
+function pickPop(){
+ if(S.pick==='wf')return `<div class="pop"><div class="poph">Chọn workflow</div>${Object.entries(WFL).map(([k,w])=>`<button data-sel="wf:${k}"><b>${w.n}</b><span>${scopeChip(w.s)} ${w.in} → ${w.out}</span></button>`).join('')}</div>`;
+ return `<div class="pop"><div class="poph">Chọn skill</div>${RS.filter(r=>r.t==='skill').map(r=>`<button data-sel="skill:${r.n}"><b class="mono">${r.n}</b><span>${scopeChip(r.s)} ${r.d}</span></button>`).join('')}</div>`;
+}
+S.extra=[];
+function chatPage(){return `<div class="chatpage"><div class="ccol"><div class="cscroll" id="cscroll">${chatCol()}</div><div class="ccomp">${S.pick?pickPop():''}<div class="composer2">${S.sel?`<div class="selchip ${S.sel[0]==='wf'?'wf':'sk'}"><i>${S.sel[0]==='wf'?'Workflow':'Skill'}</i>${S.sel[0]==='wf'?WFL[S.sel[1]].n:S.sel[1]}<button data-unsel="1" aria-label="Bỏ chọn">✕</button></div>`:''}<input id="ask" placeholder="${S.sel?'Thêm yêu cầu, hoặc bấm Gửi':'Giao việc cho agent…'}" aria-label="Nhắn cho agent"><div class="ctools"><label class="tbtn" for="upl2" title="Đính kèm file">+ File</label><input type="file" id="upl2" hidden><button class="tbtn ${S.pick==='skill'?'on':''}" data-pick="skill">Skill ▾</button><button class="tbtn ${S.pick==='wf'?'on':''}" data-pick="wf">Workflow ▾</button><span style="flex:1"></span><button class="btn p sm" data-act="csend">Gửi</button></div></div><div class="muted" style="font-size:11.5px;margin-top:4px">Workspace ${wsName()} · agent dùng skill, KB và connector bạn có quyền</div></div></div><div class="ocol">${outPanel()}</div></div>`}
+function ctick(){if(S.cs!==1)return;if(S.prog<STEPS.length){S.prog++;render();setTimeout(ctick,S.prog===3?1000:600)}else{S.cs=2;render()}}
+/* ---------- Đăng nhập + chọn workspace ---------- */
+S.stage='login';
+function gateHTML(){
+ if(S.stage==='login')return `<div class="gwrap"><div class="gcard"><div class="glogo"><div class="logo" style="width:40px;height:40px;font-size:20px;border-radius:10px">G</div><div><b style="font-size:18px">GHN AI Platform</b><div class="muted" style="font-size:12.5px">AI Experimentation OS</div></div></div>
+ <h1 style="font-size:20px">Đăng nhập</h1><p class="lead" style="font-size:13.5px">Dùng tài khoản công ty. Quyền của bạn trên platform đi theo tài khoản này.</p>
+ <button class="btn sso" data-act="login"><span class="gsq">G</span>Tiếp tục với tài khoản GHN (SSO)</button>
+ <div class="gor"><span>hoặc dùng tài khoản demo</span></div>
+ <div class="demo-acc"><span class="wsav">N</span><div><b>Ngọc · Product</b><div class="muted mono" style="font-size:11.5px">demo.product@ghn-ai.demo</div></div><button class="btn p sm" data-act="login">Vào demo</button></div>
+ <p class="muted" style="font-size:11.5px;margin:0">Bản demo MVP: không cần mật khẩu, không lưu dữ liệu đăng nhập. Mọi dữ liệu trong tool là mô phỏng.</p></div></div>`;
+ const n=WS.filter(w=>w.id!=='me'&&w.joined).length;
+ return `<div class="gwrap"><div class="gcard wide"><div class="eyebrow2">Chào Ngọc · bước cuối</div><h1 style="font-size:22px">Tham gia workspace của team</h1>
+ <p class="lead" style="font-size:13.5px">Bạn đã có workspace riêng <b>Cá nhân · Ngọc</b>. Tham gia workspace chung để dùng workflow, skill và knowledge base của team.</p>
+ <div class="wsrow mine"><span class="wsav">C</span><div style="flex:1"><b>Cá nhân · Ngọc</b><div class="muted" style="font-size:12.5px">Workspace riêng, tạo sẵn cho bạn. Chỉ bạn thấy.</div></div><span class="chip ok">đã có</span></div>
+ ${WS.filter(w=>w.id!=='me').map(w=>`<div class="wsrow ${w.joined?'on':''}"><span class="wsav" style="background:${w.id==='freight'?'var(--blue)':w.id==='pricing'?'var(--green)':'#7c3aed'}">${w.name[0]}</span><div style="flex:1;min-width:0"><b>${w.name}</b> ${w.inv?'<span class="chip info">bạn được mời</span>':''}<div class="muted" style="font-size:12.5px">${w.sub}</div></div>${w.joined?`<button class="btn sm" data-gjoin="${w.id}">✓ Đã tham gia</button>`:`<button class="btn sm p" data-gjoin="${w.id}">Tham gia</button>`}</div>`).join('')}
+ <div class="btns" style="justify-content:space-between;margin-top:6px"><button class="link" data-act="gskip">Để sau</button><button class="btn p" data-act="genter">${n?`Vào platform · ${n} workspace chung`:'Vào platform'}</button></div></div></div>`;
+}
+/* ---------- Router ---------- */
+function render(){
+ const g=S.stage!=='app';$('#gate').hidden=!g;$('.app').hidden=g;if(g){$('#gate').innerHTML=gateHTML();return}
+ sideP();let h='';
+ const cr=n=>`<div class="crumb"><button class="link" data-page="wf">Workflows</button> / <button class="link" data-wf="${n}">${WFL[n].n}</button> / run</div>`;
+ if(S.page==='chat'){sideP();$('#content').innerHTML=chatPage();$('#rolechip').textContent=S.role==='admin'?'Ngọc · Super admin':'Ngọc · Member';const cs=$('#cscroll');cs.scrollTop=cs.scrollHeight;return}
+ if(S.page==='run')h=cr('cai_gia_ltl')+stepper()+[null,s1,s2,s3,s4][S.step]();
+ else if(S.page==='update')h=cr('cap_nhat_gia')+upd();
+ else if(S.page==='wf')h=wfList();
+ else if(S.page==='wfd')h=wfDetail();
+ else if(['skill','kb','mcp'].includes(S.page))h=resList(S.page);
+ else if(S.page==='eval')h=evPage();
+ else if(S.page==='policy')h=polPage();
+ $('#content').innerHTML=`<div class="wrap">${h}</div>`;
+ $('#rolechip').textContent=S.role==='admin'?'Ngọc · Super admin':'Ngọc · Member';
+}
+document.addEventListener('change',e=>{if(e.target.id==='upl2'&&e.target.files[0]){toast('Đã đính kèm '+e.target.files[0].name)}if(e.target.id==='upl'&&e.target.files[0]){S.files.push(e.target.files[0].name);render();toast('Đã thêm '+e.target.files[0].name)}if(e.target.id==='evwf'){S.ev.wf=e.target.value;render()}});
+document.addEventListener('keydown',e=>{if(e.target.id==='ask'&&e.key==='Enter'&&S.page==='chat'){$('[data-act=csend]').click()}else if(e.target.id==='ask'&&e.key==='Enter'){S.chat=1;render()}});
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-page],[data-act],[data-ans],[data-c02],[data-close],[data-wf],[data-runwf],[data-res],[data-tab],[data-ws],[data-join],[data-auth],[data-pol],[data-evs],[data-out],[data-pick],[data-sel],[data-unsel],[data-gjoin]');if(!t)return;const d=t.dataset;
+ if(d.close){if(t.tagName==='BUTTON'||e.target===t)$('#modal').innerHTML='';return}
+ if(d.res&&!t.closest('.pick')){const r=RS.find(x=>x.n===d.res);if(r){S.page=r.t;S.tab=r.s==='private'?'mine':'pub'}}
+ else if(d.res)return;
+ else if(d.page){S.page=d.page;S.tab=d.page==='wf'?'pub':'pub';S.wsOpen=false}
+ else if(d.tab)S.tab=d.tab;
+ else if(d.gjoin){const w=WS.find(x=>x.id===d.gjoin);w.joined=!w.joined}
+ else if(d.out)S.out=d.out;
+ else if(d.pick){S.pick=S.pick===d.pick?null:d.pick}
+ else if(d.sel){S.sel=d.sel.split(':');S.pick=null}
+ else if(d.unsel){S.sel=null}
+ else if(d.wf){S.page='wfd';S.wf=d.wf}
+ else if(d.ws){S.ws=d.ws;S.wsOpen=false;toast('Đã chuyển sang '+wsName())}
+ else if(d.join){WS.find(w=>w.id===d.join).joined=true;$('#modal').innerHTML=joinModal();toast('Đã tham gia '+WS.find(w=>w.id===d.join).name);render();return}
+ else if(d.auth){S.auth[d.auth]=true;$('#modal').innerHTML='';toast('Đã kết nối '+d.auth+' bằng tài khoản của Ngọc');if(d.then==='run'){S.page='run'}if(d.then==='chat'){S.cs=1;S.prog=0;render();setTimeout(ctick,500);return}if(d.then==='chatu'){S.uc=1;S.out='diff'}}
+ else if(d.pol){POL[+d.pol][4]=!POL[+d.pol][4];toast((POL[+d.pol][4]?'Đã bật ':'Đã tắt ')+POL[+d.pol][0])}
+ else if(d.evs){const n=+d.evs;if(n<=S.ev.step)S.ev.step=n}
+ else if(d.runwf){const w=WFL[d.runwf];if(w.use.some(u=>u[1]==='b2b_pricing')&&!S.auth.b2b_pricing){S.pendingRun=w.live;$('#modal').innerHTML=authModal();return}
+  if(w.live==='update'){S.page='chat';S.uc=1;S.out='diff'}else{S.page='chat';if(S.cs===0){S.cs=1;S.prog=0;render();setTimeout(ctick,500);return}}}
+ else if(d.ans){const [k,v]=d.ans.split(':');S.a[k]=v}
+ else if(d.c02){S.c02=d.c02}
+ else if(d.act){const a=d.act,E=S.ev;
+  if(a==='login'){S.stage='join'}
+  if(a==='genter'||a==='gskip'){S.stage='app';S.page='chat';const n=WS.filter(w=>w.id!=='me'&&w.joined).length;if(n)toast(`Đã tham gia ${n} workspace chung`)}
+  if(a==='logout'){S.stage='login'}
+  if(a==='wsmenu'){S.wsOpen=!S.wsOpen}
+  if(a==='csend'&&S.sel){const [ty,k]=S.sel;const txt=(($('#ask')||{}).value||'').trim();S.sel=null;S.pick=null;
+   if(ty==='wf'&&k==='cai_gia_ltl'){d.act='cstart'}
+   else if(ty==='wf'&&k==='cap_nhat_gia'){d.act='ustart'}
+   else if(ty==='skill'&&k==='eval_setup'){S.page='eval';S.ev.step=1;render();return}
+   else if(ty==='wf'){S.extra.push(um(`<div class="selchip wf"><i>Workflow</i>${WFL[k].n}</div>${txt}`),am(`<div>Workflow <b>${WFL[k].n}</b> cần input: ${WFL[k].in}. Bạn đính kèm file để mình chạy.</div><div class="muted" style="font-size:12.5px">Bản demo mở chạy thật cho 2 workflow cài giá.</div>`));render();return}
+   else if(k==='doc_hop_dong_van_chuyen'){S.extra.push(um(`<div class="selchip sk"><i>Skill</i>${k}</div>${txt||'Đọc hợp đồng Con Cưng giúp mình'}<div class="fch"><span class="fi p">PDF</span>Hop_dong_ConCung_LTL_2026.pdf</div>`),am(`<div class="btns" style="gap:6px">${rc(['Skill',k])}</div><div>Điều khoản giá trong hợp đồng:</div><div class="tw"><table><tbody><tr><td>Đơn vị tính</td><td>CBM</td><td class="muted">điều 4.1</td></tr><tr><td>Tối thiểu</td><td>0,5 CBM mỗi lô</td><td class="muted">điều 4.3</td></tr><tr><td>Hiệu lực</td><td>01/10/2026</td><td class="muted">điều 9</td></tr><tr><td>Hà Nội nội thành</td><td>95.000 đ/CBM</td><td class="muted">phụ lục 2</td></tr></tbody></table></div>`));render();return}
+   else{S.extra.push(um(`<div class="selchip sk"><i>Skill</i>${k}</div>${txt}`),am(`<div>Đã nạp skill <b class="mono">${k}</b>. Bạn gửi file hoặc mô tả việc cần làm, mình sẽ làm theo đúng cách skill này hướng dẫn.</div>`));render();return}
+  }
+  if(a==='cstart'||(a==='csend'&&!/5%|tăng|giảm/.test(($('#ask')||{}).value||'')&&S.cs===0)){if(!S.auth.b2b_pricing){S.pendingChat=1;$('#modal').innerHTML=authModal().replace('data-then="run"','data-then="chat"');return}S.page='chat';S.cs=1;S.prog=0;S.out=null;render();setTimeout(ctick,500);return}
+  if(a==='ustart'||a==='csend'){if(!S.auth.b2b_pricing){$('#modal').innerHTML=authModal().replace('data-then="run"','data-then="chatu"');return}S.page='chat';S.uc=1;S.out='diff'}
+  if(a==='ccreate'){S.created=true;S.out='res';toast('Đã tạo LTL-42495-2026-10 · DRAFT')}
+  if(a==='usched'){S.scheduled=true;toast('Đã đặt lịch LTL-42495-2026-11 · 01/11')}
+  if(a==='join'){S.wsOpen=false;render();$('#modal').innerHTML=joinModal();return}
+  if(a==='role'){S.role=S.role==='admin'?'member':'admin';toast(S.role==='admin'?'Đang xem với vai trò Super admin':'Đang xem với vai trò Member')}
+  if(a==='why'){$('#modal').innerHTML=whyModal();return}
+  if(a==='newwf'){$('#modal').innerHTML=newWfModal();return}
+  if(a==='savewf'){WFL.kiem_tra_phu_phi={n:'Kiểm tra phụ phí trong hợp đồng',s:'private',o:'Ngọc',in:'Hợp đồng vận chuyển (PDF)',out:'Danh sách phụ phí lệch so với bảng chuẩn',use:[['Skill','doc_hop_dong_van_chuyen'],['Knowledge','mau_hop_dong_LTL']],proc:['Đọc hợp đồng','So với bảng chuẩn','Liệt kê chỗ lệch'],eval:null,runs:0};$('#modal').innerHTML='';S.page='wf';S.tab='mine';toast('Đã tạo workflow riêng. Publish cần qua guardrail.')}
+  if(a==='newres'){$('#modal').innerHTML=newResModal(d.t);return}
+  if(a==='saveres'){const n=$('#nr-n').value.trim()||'moi';const sc=$('#nr-s').value;RS.push({t:d.t,n,s:d.t==='mcp'&&sc==='public'?'shared':sc,o:'Ngọc',v:'v1',d:'Vừa tạo.'});if(d.t==='mcp')S.auth[n]=false;$('#modal').innerHTML='';S.tab=sc==='private'?'mine':'pub';toast('Đã tạo '+n)}
+  if(a==='publish'){$('#modal').innerHTML=pubModal();return}
+  if(a==='dopub'){WFL[S.wf].s='public';WFL[S.wf].eval='17/17 case · 30/09';$('#modal').innerHTML='';S.log=[['30/09 17:40',WFL[S.wf].n,'Publish','<span class="chip ok">cho phép · đạt PL-01 đến PL-04</span>']];toast('Đã publish. Mọi người trong công ty đã thấy workflow này.')}
+  if(a==='goeval'){$('#modal').innerHTML='';S.page='eval';E.wf=S.wf==='cai_gia_ltl'?'tom_tat_hop_dong':S.wf;E.step=1}
+  if(a==='evnext')E.step=Math.min(5,E.step+1);
+  if(a==='evprev')E.step=Math.max(1,E.step-1);
+  if(a==='newds'){E.ds=true;toast('Đã tạo dataset hop_dong_da_verify')}
+  if(a==='imp'){E.imp=true;toast('Đã import 12 case')}
+  if(a==='trace'){E.traced=true;toast('Đã thêm 5 convo vào dataset')}
+  if(a==='runeval'){E.run=1;toast('Eval xong: 15/17 case đạt')}
+  if(a==='apply'){E.run=2;E.applied=true;toast('Đã tạo skill tom_tat_dieu_khoan_gia v2 · eval 17/17')}
+  if(a==='backpub'){S.page='wfd';S.wf=E.wf;render();$('#modal').innerHTML=pubModal();return}
+  if(a==='newpol'){$('#modal').innerHTML=dlg('Ban hành policy',`<div class="card" style="border:0;padding:0"><div class="row"><label for="np-n">Policy</label><input class="inp" id="np-n" value="Workflow gửi email ra ngoài phải có người duyệt"></div><div class="row"><label for="np-a">Áp cho</label><select id="np-a"><option>Workflow dùng connector email</option><option>Mọi workflow public</option></select></div><div class="row"><label for="np-h">Hành động</label><select id="np-h"><option>Chặn</option><option>Cảnh báo</option></select></div></div>`,'<button class="btn p" data-act="savepol">Ban hành</button>');return}
+  if(a==='savepol'){POL.push(['PL-0'+(POL.length+1),$('#np-n').value,$('#np-a').value,$('#np-h').value,true]);$('#modal').innerHTML='';toast('Đã ban hành. Guardrail agent áp dụng ngay cho mọi workspace.')}
+  if(a==='start'){S.step=2;S.prog=0;render();setTimeout(tick,500);$('#content').scrollTop=0;return}
+  if(a==='toReview')S.step=3;
+  if(a==='confirm')S.confirm=true;
+  if(a==='unconfirm')S.confirm=false;
+  if(a==='create'){S.step=4;S.created=true;toast('Đã tạo LTL-42495-2026-10 · DRAFT')}
+  if(a==='send')S.chat=1;
+  if(a==='schedule'){S.scheduled=true;toast('Đã đặt lịch LTL-42495-2026-11 · 01/11')}
+ }
+ render();if(d.page||d.wf||d.runwf||d.act==='toReview'||d.act==='create'||d.act==='evnext'||d.act==='goeval')$('#content').scrollTop=0;
+});
+render();
+
+</script>
+</body></html>
